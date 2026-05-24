@@ -1,5 +1,6 @@
 package com.msa.eshop.ui.component
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +35,7 @@ import com.msa.eshop.R
 import com.msa.eshop.ui.acticity.MainActivity
 import com.msa.eshop.ui.theme.barcolor
 import com.msa.eshop.ui.theme.barcolorlow
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DockedSearch(
     modifier: Modifier = Modifier,
