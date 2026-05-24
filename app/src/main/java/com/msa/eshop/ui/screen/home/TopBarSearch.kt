@@ -30,12 +30,9 @@ fun TopBarSearch(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 110.dp, max = 130.dp)
+            .heightIn(min = 108.dp, max = 124.dp)
             .background(Color.White)
-            .padding(
-                top = 16.dp,
-                bottom = 8.dp
-            ),
+            .padding(top = 14.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

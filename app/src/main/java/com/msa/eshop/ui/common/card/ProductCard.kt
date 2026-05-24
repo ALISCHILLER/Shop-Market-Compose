@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.msa.eshop.R
+import com.msa.eshop.data.Model.response.DiscountResultModel
+import com.msa.eshop.data.local.entity.OrderEntity
 import com.msa.eshop.data.local.entity.ProductModelEntity
 import com.msa.eshop.ui.component.bottomSheetC.BottomSheetExample
 import com.msa.eshop.ui.theme.DIMENS_2dp
@@ -57,6 +59,11 @@ import com.msa.eshop.utils.Currency
 fun ProductCard(
     modifier: Modifier = Modifier,
     product: ProductModelEntity,
+    order: OrderEntity?,
+    discounts: List<DiscountResultModel>,
+    isDiscountLoading: Boolean,
+    onSaveOrder: (ProductModelEntity, Int, Int) -> Unit,
+    onDiscountClick: (ProductModelEntity) -> Unit,
     onClick: (ProductModelEntity) -> Unit
 ) {
     var showBottomSheet by remember {
@@ -76,6 +83,8 @@ fun ProductCard(
         ) {
             AddProduct(
                 product = product,
+                order = order,
+                onSaveOrder = onSaveOrder,
                 onDismissRequest = {
                     showBottomSheet = false
                 }
@@ -91,6 +100,8 @@ fun ProductCard(
         ) {
             DiscountsProductCard(
                 product = product,
+                discounts = discounts,
+                isLoading = isDiscountLoading,
                 onDismissRequest = {
                     showBottomSheetDiscounts = false
                 }
@@ -145,6 +156,7 @@ fun ProductCard(
                                 .padding(4.dp)
                                 .alpha(if (product.isDiscounts) 1f else 0f)
                                 .clickable(enabled = product.isDiscounts) {
+                                    onDiscountClick(product)
                                     showBottomSheetDiscounts = true
                                 },
                             contentAlignment = Alignment.Center
@@ -244,6 +256,11 @@ private fun ProductCardPreview() {
             isDiscounts = true,
             productImage = ""
         ),
+        order = null,
+        discounts = emptyList(),
+        isDiscountLoading = false,
+        onSaveOrder = { _, _, _ -> },
+        onDiscountClick = {},
         onClick = {}
     )
 }

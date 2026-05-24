@@ -2,6 +2,7 @@ package com.msa.eshop.ui.screen.basket
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,18 +12,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,93 +25,91 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.msa.eshop.R
-import com.msa.eshop.data.local.entity.OrderEntity
 import com.msa.eshop.ui.common.card.BasketCard
 import com.msa.eshop.ui.common.topBar.TopBarDetails
-import com.msa.eshop.ui.screen.home.HomeViewModel
-import com.msa.eshop.ui.theme.PlatinumSilver
 import com.msa.eshop.ui.theme.Typography
-import kotlinx.coroutines.delay
 
 @Composable
 fun BasketScreen(
     modifier: Modifier = Modifier,
     viewModel: BasketViewModel = hiltViewModel()
 ) {
+    val orders by viewModel.allOrder.collectAsState()
 
-
-
-    val counter = remember { mutableStateOf(0) }
-
-   // val orders by viewModel.allOrder.collectAsState(emptyList())
-
-
-    val orders = rememberSaveable { mutableStateOf<List<OrderEntity>>(emptyList()) }
-    LaunchedEffect(counter.value) {
-        orders.value = viewModel.allOrder.value
-    }
-
-    LaunchedEffect(Unit) {
-        delay(1000)
-        orders.value = viewModel.allOrder.value
-    }
-
-    Scaffold(
-        modifier = Modifier
-            .background(color = Color.White),
+    androidx.compose.material3.Scaffold(
+        modifier = modifier.background(color = Color.White),
         topBar = {
             TopBarDetails("لیست خرید های شما")
-        },
-    ) {
-
+        }
+    ) { innerPadding ->
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Column(
                 modifier = Modifier
-                    .padding(it)
+                    .padding(innerPadding)
                     .background(color = Color.White)
                     .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceAround
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        // اینجا از وزن استفاده شده است تا LazyColumn بیشتر از فضای دیگری اشغال کند
-                        .fillMaxWidth()
-                        .weight(1.0f), // پر کردن عرض موجود در طول
-                ) {
-                    items(orders.value) { order ->
-                        BasketCard(
-                            orderEntity = order,
-                            onClick = { deleted ->
-                                if (deleted) {
-                                    counter.value++
-                                }
-                            },
-                            viewModel = viewModel
+                if (orders.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "سبد خرید شما خالی است",
+                            style = Typography.titleSmall
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        items(
+                            items = orders,
+                            key = { it.id }
+                        ) { order ->
+                            BasketCard(
+                                orderEntity = order,
+                                onQuantityChange = { value1, value2 ->
+                                    viewModel.updateOrderQuantity(
+                                        orderEntity = order,
+                                        value1 = value1,
+                                        value2 = value2
+                                    )
+                                },
+                                onDelete = {
+                                    viewModel.deleteOrder(order.id)
+                                }
+                            )
+                        }
                     }
                 }
 
                 Button(
+                    enabled = orders.isNotEmpty(),
                     onClick = {
-                              viewModel.navigateToSimulate()
+                        viewModel.navigateToSimulate()
                     },
                     modifier = Modifier
                         .padding(5.dp)
                         .fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    ),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
-                        stringResource(id = R.string.pre_invoice_registration),
-                        style = Typography.titleSmall,
+                        text = stringResource(id = R.string.pre_invoice_registration),
+                        style = Typography.titleSmall
                     )
                 }
             }
-
-
         }
     }
 }

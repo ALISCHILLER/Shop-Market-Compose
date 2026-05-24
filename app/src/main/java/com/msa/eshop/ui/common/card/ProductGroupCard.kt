@@ -68,14 +68,16 @@ fun ProductGroupCard(
                             color = contentColor,
                             style = Typography.labelSmall,
                             textAlign = TextAlign.Center,
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     } else {
                         AsyncImage(
                             model = iconUrl,
                             contentDescription = productGroupEntity.productCategoryName,
                             modifier = Modifier.size(30.dp),
-                            error = painterResource(id = R.drawable.not_load_image)
+                            error = painterResource(id = R.drawable.not_load_image),
+                            placeholder = painterResource(id = R.drawable.not_load_image)
                         )
                     }
                 }

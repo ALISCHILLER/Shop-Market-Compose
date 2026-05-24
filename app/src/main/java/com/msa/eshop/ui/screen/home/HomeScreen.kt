@@ -24,9 +24,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,37 +34,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.msa.componentcompose.ui.component.lottiefile.LoadingAnimate
-import com.msa.eshop.data.local.entity.ProductGroupEntity
 import com.msa.eshop.ui.common.card.ProductCard
 import com.msa.eshop.ui.common.card.ProductGroupCard
 import com.msa.eshop.ui.component.verticalSlider.VerticalSlider
 import com.msa.eshop.ui.theme.PlatinumSilver
 
-private const val ALL_PRODUCTS_GROUP_CODE = 99
-
 @Composable
 fun HomeScreen() {
     val viewModel: HomeViewModel = hiltViewModel()
 
-    val state by viewModel.state.collectAsState()
-    val products by viewModel.allProduct.collectAsState()
-    val banner by viewModel.banner.collectAsState()
-    val productGroupsFromDb by viewModel.allProductGroup.collectAsState()
-
-    var selectedProductGroupCode by remember {
-        mutableIntStateOf(ALL_PRODUCTS_GROUP_CODE)
-    }
-
-    val productGroups = remember(productGroupsFromDb) {
-        listOf(
-            ProductGroupEntity(
-                productCategoryCode = ALL_PRODUCTS_GROUP_CODE,
-                productCategoryName = "همه",
-                productCategoryImage = null,
-                productCategoryImageUnselect = null
-            )
-        ) + productGroupsFromDb
-    }
+    val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.productCheck()
@@ -83,8 +59,7 @@ fun HomeScreen() {
             topBar = {
                 TopBarSearch(
                     onSearchChange = { query ->
-                        selectedProductGroupCode = ALL_PRODUCTS_GROUP_CODE
-                        viewModel.searchProduct(query)
+                        viewModel.onSearchChanged(query)
                     }
                 )
             }
@@ -95,10 +70,9 @@ fun HomeScreen() {
                         .fillMaxSize()
                         .padding(innerPadding),
                     state = rememberSwipeRefreshState(
-                        isRefreshing = state.isLoading
+                        isRefreshing = uiState.isLoading && uiState.products.isNotEmpty()
                     ),
                     onRefresh = {
-                        selectedProductGroupCode = ALL_PRODUCTS_GROUP_CODE
                         viewModel.refresh()
                     }
                 ) {
@@ -120,7 +94,7 @@ fun HomeScreen() {
                             span = { GridItemSpan(maxLineSpan) }
                         ) {
                             VerticalSlider(
-                                imageUrl = banner,
+                                imageUrl = uiState.banners,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(180.dp)
@@ -140,15 +114,14 @@ fun HomeScreen() {
                                     contentPadding = PaddingValues(horizontal = 8.dp)
                                 ) {
                                     items(
-                                        items = productGroups,
+                                        items = uiState.productGroups,
                                         key = { it.productCategoryCode }
                                     ) { productGroup ->
                                         ProductGroupCard(
                                             productGroupEntity = productGroup,
-                                            isSelected = selectedProductGroupCode == productGroup.productCategoryCode,
+                                            isSelected = uiState.selectedGroupCode == productGroup.productCategoryCode,
                                             onClick = {
-                                                selectedProductGroupCode = it.productCategoryCode
-                                                viewModel.getProduct(it.productCategoryCode)
+                                                viewModel.onGroupSelected(it.productCategoryCode)
                                             }
                                         )
                                     }
@@ -156,7 +129,22 @@ fun HomeScreen() {
                             }
                         }
 
-                        if (products.isEmpty() && !state.isLoading) {
+                        if (uiState.errorMessage != null && uiState.products.isEmpty()) {
+                            item(
+                                span = { GridItemSpan(maxLineSpan) }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = uiState.errorMessage ?: "خطا در دریافت اطلاعات"
+                                    )
+                                }
+                            }
+                        } else if (uiState.products.isEmpty() && !uiState.isLoading) {
                             item(
                                 span = { GridItemSpan(maxLineSpan) }
                             ) {
@@ -173,14 +161,27 @@ fun HomeScreen() {
                             }
                         } else {
                             items(
-                                items = products,
+                                items = uiState.products,
                                 key = { it.id }
                             ) { product ->
                                 ProductCard(
                                     modifier = Modifier.fillMaxWidth(),
                                     product = product,
+                                    order = uiState.orders.firstOrNull { it.id == product.id },
+                                    discounts = uiState.discounts,
+                                    isDiscountLoading = uiState.isDiscountLoading,
+                                    onSaveOrder = { selectedProduct, value1, value2 ->
+                                        viewModel.saveProductOrder(
+                                            productModelEntity = selectedProduct,
+                                            value1 = value1,
+                                            value2 = value2
+                                        )
+                                    },
+                                    onDiscountClick = {
+                                        viewModel.discountRequest(it.id)
+                                    },
                                     onClick = {
-                                        // TODO
+                                        // TODO: عملیات کلیک روی کالا
                                     }
                                 )
                             }
@@ -190,7 +191,7 @@ fun HomeScreen() {
             }
         }
 
-        if (state.isLoading && products.isEmpty()) {
+        if (uiState.isLoading && uiState.products.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center

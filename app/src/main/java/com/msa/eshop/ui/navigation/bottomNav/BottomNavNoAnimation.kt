@@ -30,23 +30,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme.colors
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,41 +52,30 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.msa.eshop.R
 import com.msa.eshop.ui.acticity.MainViewModel
 import com.msa.eshop.ui.navigation.Route
 import com.msa.eshop.ui.theme.Typography
-import com.msa.eshop.ui.theme.barcolor
 import com.msa.eshop.ui.theme.barcolorDark
-
 
 @Preview
 @Composable
-fun BottomNavNoAnimationPreview(
-) {
+fun BottomNavNoAnimationPreview() {
     Scaffold(
-
         bottomBar = {
             BottomNavNoAnimation(
-                "",
+                currentRoute = "",
                 onClick = {}
             )
         }
     ) {
-        it
         Column(
             modifier = Modifier
                 .padding(it)
                 .fillMaxSize()
                 .background(Color.Red)
-
-
-        ) {
-
-        }
+        ) {}
     }
-
 }
 
 @ExperimentalAnimationApi
@@ -98,40 +83,40 @@ fun BottomNavNoAnimationPreview(
 fun BottomNavNoAnimation(
     currentRoute: String?,
     onClick: (String) -> Unit,
-
+    viewModel: MainViewModel = hiltViewModel()
 ) {
+    val allOrder by viewModel.allOrder.collectAsState()
+    val basketCount = allOrder.size
+
     val screens = listOf(
         Screen(
-            "صفحه اصلی",
-            Icons.Filled.Home,
-            Icons.Outlined.Home,
-            Route.HomeScreen.route
+            title = "صفحه اصلی",
+            activeIcon = Icons.Filled.Home,
+            inactiveIcon = Icons.Outlined.Home,
+            route = Route.HomeScreen.route
         ),
         Screen(
-            "گزارش خرید",
-            ImageVector.vectorResource(R.drawable.ic_invoice),
-            ImageVector.vectorResource(R.drawable.ic_invoice),
-            Route.OrderStatusReportScreen.route
+            title = "گزارش خرید",
+            activeIcon = ImageVector.vectorResource(R.drawable.ic_invoice),
+            inactiveIcon = ImageVector.vectorResource(R.drawable.ic_invoice),
+            route = Route.OrderStatusReportScreen.route
         ),
         Screen(
-            "سبد",
-            ImageVector.vectorResource(R.drawable.ic_basket),
-            ImageVector.vectorResource(R.drawable.ic_basket),
-            Route.BasketScreen.route
+            title = "سبد",
+            activeIcon = ImageVector.vectorResource(R.drawable.ic_basket),
+            inactiveIcon = ImageVector.vectorResource(R.drawable.ic_basket),
+            route = Route.BasketScreen.route
         ),
         Screen(
-            "پروفایل",
-            ImageVector.vectorResource(R.drawable.ic_profile),
-            ImageVector.vectorResource(R.drawable.ic_profile),
-            Route.ProfileScreen.route
+            title = "پروفایل",
+            activeIcon = ImageVector.vectorResource(R.drawable.ic_profile),
+            inactiveIcon = ImageVector.vectorResource(R.drawable.ic_profile),
+            route = Route.ProfileScreen.route
         )
-
     )
 
-
-    var selectedScreen by remember { mutableStateOf(0) }
     Box(
-        Modifier
+        modifier = Modifier
             .padding(horizontal = 8.dp, vertical = 5.dp)
             .shadow(5.dp, shape = RoundedCornerShape(10.dp))
             .background(color = colors.surface)
@@ -139,31 +124,33 @@ fun BottomNavNoAnimation(
             .fillMaxWidth()
     ) {
         Row(
-            Modifier
-                .fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            for (screen in screens) {
-                val isSelected = screen == screens.find { it.route == currentRoute }
-                val animatedWeight by animateFloatAsState(targetValue = if (isSelected) 1.5f else 1f)
+            screens.forEach { screen ->
+                val isSelected = screen.route == currentRoute
+                val animatedWeight by animateFloatAsState(
+                    targetValue = if (isSelected) 1.5f else 1f
+                )
+
                 Box(
-                    modifier = Modifier
-                        .weight(animatedWeight),
-                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.weight(animatedWeight),
+                    contentAlignment = Alignment.Center
                 ) {
-                    val interactionSource = remember { MutableInteractionSource() }
+                    val interactionSource = remember {
+                        MutableInteractionSource()
+                    }
+
                     BottomNavItem(
                         modifier = Modifier.clickable(
                             interactionSource = interactionSource,
                             indication = null
                         ) {
-                            selectedScreen = screens.indexOf(screen)
-                            onClick(
-                                screen.route
-                            )
+                            onClick(screen.route)
                         },
                         item = screen,
                         isSelected = isSelected,
+                        basketCount = basketCount
                     )
                 }
             }
@@ -171,18 +158,26 @@ fun BottomNavNoAnimation(
     }
 }
 
-
 @ExperimentalAnimationApi
 @Composable
 private fun BottomNavItem(
     modifier: Modifier = Modifier,
     item: Screen,
     isSelected: Boolean,
-    viewModel : MainViewModel = hiltViewModel()
+    basketCount: Int
 ) {
-    val animatedHeight by animateDpAsState(targetValue = if (isSelected) 36.dp else 26.dp)
-    val animatedElevation by animateDpAsState(targetValue = if (isSelected) 15.dp else 0.dp)
-    val animatedAlpha by animateFloatAsState(targetValue = if (isSelected) 1f else .5f)
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isSelected) 36.dp else 26.dp
+    )
+
+    val animatedElevation by animateDpAsState(
+        targetValue = if (isSelected) 15.dp else 0.dp
+    )
+
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (isSelected) 1f else .5f
+    )
+
     val animatedIconSize by animateDpAsState(
         targetValue = if (isSelected) 26.dp else 20.dp,
         animationSpec = spring(
@@ -191,17 +186,10 @@ private fun BottomNavItem(
         )
     )
 
-    viewModel.getAllOrder()
-    val allOrder by viewModel.allOrder.collectAsState()
-
-
     Box(
-        modifier = modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-
-
         Box(
             modifier = Modifier
                 .height(animatedHeight)
@@ -213,32 +201,30 @@ private fun BottomNavItem(
                     color = if (isSelected) Color.Red else colors.surface,
                     shape = RoundedCornerShape(22.dp)
                 )
-                .padding(top = 1.dp) // Adjust as needed to fit the number inside the circle
+                .padding(top = 1.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.Center
             ) {
                 FlipIcon(
                     modifier = Modifier
                         .align(Alignment.CenterVertically)
                         .padding(horizontal = 1.dp, vertical = 1.dp)
                         .fillMaxHeight()
-                        .alpha(animatedAlpha)  // <-------
-                        .size(animatedIconSize),  // <-------
+                        .alpha(animatedAlpha)
+                        .size(animatedIconSize),
                     isActive = isSelected,
                     activeIcon = item.activeIcon,
                     inactiveIcon = item.inactiveIcon,
-                    ""
+                    contentDescription = item.title
                 )
 
                 AnimatedVisibility(visible = isSelected) {
                     Text(
                         text = item.title,
-                        modifier = Modifier
-                            .padding(start = 1.dp, end = 1.dp),
+                        modifier = Modifier.padding(start = 1.dp, end = 1.dp),
                         maxLines = 1,
                         color = Color.White,
                         style = Typography.labelSmall
@@ -246,36 +232,35 @@ private fun BottomNavItem(
                 }
             }
 
-            val infiniteTransition = rememberInfiniteTransition()
-            val textSize by infiniteTransition.animateFloat(
-                initialValue = 10f,
-                targetValue = 16f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 2000),
-                    repeatMode = RepeatMode.Reverse
-                )
-            )
-            // Number "2" positioned at the top center inside the circle
-            if (item.route == Route.BasketScreen.route && allOrder.size >0)
-            Text(
-                text = allOrder.size.toString(),
-                fontSize = textSize.sp,
-                modifier = Modifier
-                    .padding(horizontal = 5.dp)
-                    .align(Alignment.TopStart)
-                    .background(
-                        color = Color.Red,
-                        shape = CircleShape
+            if (item.route == Route.BasketScreen.route && basketCount > 0) {
+                val infiniteTransition = rememberInfiniteTransition()
+                val textSize by infiniteTransition.animateFloat(
+                    initialValue = 10f,
+                    targetValue = 16f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 2000),
+                        repeatMode = RepeatMode.Reverse
                     )
-                    .padding(horizontal = 5.dp)
-                ,
-                color = Color.White,
-                style = Typography.labelSmall
-            )
+                )
+
+                Text(
+                    text = basketCount.toString(),
+                    fontSize = textSize.sp,
+                    modifier = Modifier
+                        .padding(horizontal = 5.dp)
+                        .align(Alignment.TopStart)
+                        .background(
+                            color = Color.Red,
+                            shape = CircleShape
+                        )
+                        .padding(horizontal = 5.dp),
+                    color = Color.White,
+                    style = Typography.labelSmall
+                )
+            }
         }
     }
 }
-
 
 @Composable
 fun FlipIcon(
@@ -283,7 +268,7 @@ fun FlipIcon(
     isActive: Boolean,
     activeIcon: ImageVector,
     inactiveIcon: ImageVector,
-    contentDescription: String,
+    contentDescription: String
 ) {
     val animationRotation by animateFloatAsState(
         targetValue = if (isActive) 180f else 0f,
@@ -292,13 +277,17 @@ fun FlipIcon(
             dampingRatio = Spring.DampingRatioMediumBouncy
         )
     )
+
     Box(
-        modifier = modifier
-            .graphicsLayer { rotationY = animationRotation },
-        contentAlignment = Alignment.Center,
+        modifier = modifier.graphicsLayer {
+            rotationY = animationRotation
+        },
+        contentAlignment = Alignment.Center
     ) {
         Icon(
-            rememberVectorPainter(image = if (animationRotation > 90f) activeIcon else inactiveIcon),
+            painter = rememberVectorPainter(
+                image = if (animationRotation > 90f) activeIcon else inactiveIcon
+            ),
             contentDescription = contentDescription,
             tint = if (isActive) Color.White else barcolorDark
         )
@@ -309,7 +298,5 @@ data class Screen(
     val title: String,
     val activeIcon: ImageVector,
     val inactiveIcon: ImageVector,
-    val route: String,
-
-    ) {
-}
+    val route: String
+)

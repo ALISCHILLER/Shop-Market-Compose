@@ -48,36 +48,54 @@ class HomeRepository @Inject constructor(
         } as Flow<Resource<ProductGroupResponse?>>
     }
 
-    suspend fun requestBanner(): Flow<Resource<BannerResponse>> {
+    suspend fun requestBanner(): Flow<Resource<BannerResponse?>> {
         return apiManager.makeSafeApiCall {
             withContext(Dispatchers.IO) {
                 apiService.getBanner()
             }
-        } as Flow<Resource<BannerResponse>>
+        } as Flow<Resource<BannerResponse?>>
     }
 
-    suspend fun requestDiscount(productCode: String): Flow<Resource<DiscountResponse>> {
+    suspend fun requestDiscount(productCode: String): Flow<Resource<DiscountResponse?>> {
         return apiManager.makeSafeApiCall {
             withContext(Dispatchers.IO) {
                 apiService.getListDiscounts(productCode)
             }
-        } as Flow<Resource<DiscountResponse>>
+        } as Flow<Resource<DiscountResponse?>>
     }
 
     fun getProductCount(): Int {
         return productDao.getProductCount()
     }
 
+    fun getProductGroupCount(): Int {
+        return productGroupDao.getProductGroupCount()
+    }
+
     fun getProduct(code: Int): Flow<List<ProductModelEntity>> {
         return productDao.getProduct(code)
     }
 
-    fun insertProductGroup(productGroupEntity: List<ProductGroupEntity>) {
-        productGroupDao.insert(productGroupEntity)
+    fun observeProducts(
+        groupCode: Int,
+        searchQuery: String
+    ): Flow<List<ProductModelEntity>> {
+        return productDao.observeProducts(
+            groupCode = groupCode,
+            searchQuery = searchQuery
+        )
     }
 
-    fun insertProduct(productModelEntity: List<ProductModelEntity>) {
-        productDao.insert(productModelEntity)
+    suspend fun insertProductGroup(productGroupEntity: List<ProductGroupEntity>) {
+        withContext(Dispatchers.IO) {
+            productGroupDao.insert(productGroupEntity)
+        }
+    }
+
+    suspend fun insertProduct(productModelEntity: List<ProductModelEntity>) {
+        withContext(Dispatchers.IO) {
+            productDao.insert(productModelEntity)
+        }
     }
 
     fun searchProduct(search: String): Flow<List<ProductModelEntity>> {
@@ -89,10 +107,14 @@ class HomeRepository @Inject constructor(
     }
 
     suspend fun insertOrder(orderEntity: OrderEntity) {
-        orderDao.insert(orderEntity)
+        withContext(Dispatchers.IO) {
+            orderDao.insert(orderEntity)
+        }
     }
 
     suspend fun deleteOrder(orderId: String) {
-        orderDao.deleteOrder(orderId)
+        withContext(Dispatchers.IO) {
+            orderDao.deleteOrder(orderId)
+        }
     }
 }

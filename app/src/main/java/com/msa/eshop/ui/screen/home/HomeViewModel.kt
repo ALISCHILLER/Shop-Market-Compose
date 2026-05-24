@@ -31,12 +31,13 @@ class HomeViewModel @Inject constructor(
     private val homeRepository: HomeRepository
 ) : ViewModel() {
 
-    companion object {
-        private const val ALL_PRODUCTS_GROUP_CODE = 99
-    }
+    private val converter = Convert_Number()
 
     private val _state = MutableStateFlow(GeneralStateModel())
     val state: StateFlow<GeneralStateModel> = _state
+
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState
 
     private val _allProduct = MutableStateFlow<List<ProductModelEntity>>(emptyList())
     val allProduct: StateFlow<List<ProductModelEntity>> = _allProduct
@@ -60,10 +61,20 @@ class HomeViewModel @Inject constructor(
     private var productGroupJob: Job? = null
     private var orderJob: Job? = null
 
+    private var hasStartedObservers = false
+
+    private var currentGroupCode: Int = ALL_PRODUCTS_GROUP_CODE
+    private var currentSearchQuery: String = ""
+
+    private val allProductsGroup = ProductGroupEntity(
+        productCategoryCode = ALL_PRODUCTS_GROUP_CODE,
+        productCategoryName = "همه",
+        productCategoryImage = null,
+        productCategoryImageUnselect = null
+    )
+
     fun productCheck() {
-        observeAllProducts()
-        observeAllProductGroups()
-        observeAllOrders()
+        startObserversIfNeeded()
 
         val productCount = homeRepository.getProductCount()
 
@@ -76,13 +87,86 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refresh() {
-        observeAllProducts()
-        observeAllProductGroups()
-        observeAllOrders()
+        startObserversIfNeeded()
 
         productRequest()
         productGroupRequest()
         Bannerrequest()
+    }
+
+    fun onGroupSelected(productCategoryCode: Int) {
+        currentGroupCode = productCategoryCode
+
+        _uiState.value = _uiState.value.copy(
+            selectedGroupCode = productCategoryCode
+        )
+
+        observeProducts()
+    }
+
+    fun onSearchChanged(search: String) {
+        currentSearchQuery = converter.PersianToEnglish(search.trim())
+
+        _uiState.value = _uiState.value.copy(
+            searchQuery = search
+        )
+
+        observeProducts()
+    }
+
+    fun getProduct(productCategoryCode: Int) {
+        onGroupSelected(productCategoryCode)
+    }
+
+    fun searchProduct(search: String) {
+        onSearchChanged(search)
+    }
+
+    fun getAllOrder() {
+        observeAllOrders()
+    }
+
+    fun saveProductOrder(
+        productModelEntity: ProductModelEntity,
+        value1: Int,
+        value2: Int
+    ) {
+        val totalValue = calculateTotalValue(
+            value1 = value1,
+            value2 = value2,
+            convertFactor2 = productModelEntity.convertFactor2
+        )
+
+        updateOrderInDatabase(
+            productModelEntity = productModelEntity,
+            totalValue = totalValue,
+            value1 = value1,
+            value2 = value2
+        )
+    }
+
+    fun calculateTotalPriceAndHandleOrder(
+        value1: Int,
+        value2: Int,
+        productModelEntity: ProductModelEntity
+    ): Float {
+        val totalValue = calculateTotalValue(
+            value1 = value1,
+            value2 = value2,
+            convertFactor2 = productModelEntity.convertFactor2
+        )
+
+        updateOrderInDatabase(
+            productModelEntity = productModelEntity,
+            totalValue = totalValue,
+            value1 = value1,
+            value2 = value2
+        )
+
+        return calculateSalePrice(
+            totalValue = totalValue,
+            price = productModelEntity.price
+        )
     }
 
     fun productRequest() {
@@ -140,8 +224,14 @@ class HomeViewModel @Inject constructor(
             onSuccess = { response ->
                 response?.data?.let { banners ->
                     Timber.tag("HomeViewModel").d("Bannerrequest SUCCESS: $banners")
+
                     _banner.value = banners
+
+                    _uiState.value = _uiState.value.copy(
+                        banners = banners
+                    )
                 }
+
                 updateStateLoading(false)
             },
             updateStateLoading = { isLoading ->
@@ -160,92 +250,56 @@ class HomeViewModel @Inject constructor(
                 homeRepository.requestDiscount(productCode)
             },
             onSuccess = { response ->
-                response.data?.let { discounts ->
+                response?.data?.let { discounts ->
                     Timber.tag("HomeViewModel").d("discountRequest SUCCESS: $discounts")
+
                     _discount.value = discounts
+
+                    _uiState.value = _uiState.value.copy(
+                        discounts = discounts,
+                        isDiscountLoading = false
+                    )
                 }
-                updateStateLoading(false)
             },
             updateStateLoading = { isLoading ->
-                updateStateLoading(isLoading)
+                _uiState.value = _uiState.value.copy(
+                    isDiscountLoading = isLoading
+                )
             },
             updateStateError = { errorMessage ->
-                updateStateError(errorMessage)
+                _uiState.value = _uiState.value.copy(
+                    isDiscountLoading = false,
+                    errorMessage = errorMessage
+                )
             }
         )
     }
 
-    fun getProduct(productCategoryCode: Int) {
-        productJob?.cancel()
+    private fun startObserversIfNeeded() {
+        if (hasStartedObservers) return
 
-        productJob = viewModelScope.launch {
-            val productFlow = if (productCategoryCode == ALL_PRODUCTS_GROUP_CODE) {
-                homeRepository.getAllProduct
-            } else {
-                homeRepository.getProduct(productCategoryCode)
-            }
+        hasStartedObservers = true
 
-            productFlow.collect { products ->
-                _allProduct.value = products
-                updateStateLoading(false)
-            }
-        }
-    }
-
-    fun getAllOrder() {
+        observeProducts()
+        observeAllProductGroups()
         observeAllOrders()
     }
 
-    fun searchProduct(search: String) {
-        val converter = Convert_Number()
-        val query = converter.PersianToEnglish(search.trim())
-
+    private fun observeProducts() {
         productJob?.cancel()
 
         productJob = viewModelScope.launch {
-            val productFlow = if (query.isBlank()) {
-                homeRepository.getAllProduct
-            } else {
-                homeRepository.searchProduct(query)
-            }
-
-            productFlow.collect { products ->
+            homeRepository.observeProducts(
+                groupCode = currentGroupCode,
+                searchQuery = currentSearchQuery
+            ).collect { products ->
                 _allProduct.value = products
-                updateStateLoading(false)
-            }
-        }
-    }
 
-    fun calculateTotalPriceAndHandleOrder(
-        value1: Int,
-        value2: Int,
-        productModelEntity: ProductModelEntity
-    ): Float {
-        val totalValue = calculateTotalValue(
-            value1 = value1,
-            value2 = value2,
-            convertFactor2 = productModelEntity.convertFactor2
-        )
+                _uiState.value = _uiState.value.copy(
+                    products = products,
+                    selectedGroupCode = currentGroupCode
+                )
 
-        updateOrderInDatabase(
-            productModelEntity = productModelEntity,
-            totalValue = totalValue,
-            value1 = value1,
-            value2 = value2
-        )
-
-        return calculateSalePrice(
-            totalValue = totalValue,
-            price = productModelEntity.price
-        )
-    }
-
-    private fun observeAllProducts() {
-        productJob?.cancel()
-
-        productJob = viewModelScope.launch {
-            homeRepository.getAllProduct.collect { products ->
-                _allProduct.value = products
                 updateStateLoading(false)
             }
         }
@@ -256,8 +310,19 @@ class HomeViewModel @Inject constructor(
 
         productGroupJob = viewModelScope.launch {
             homeRepository.getAllProductGroup.collect { productGroups ->
-                Log.e("TAG", "getAllProductGroup: $productGroups")
+                Log.e("HomeViewModel", "getAllProductGroup: $productGroups")
+
+                val uiGroups = listOf(allProductsGroup) + productGroups
+                    .filter { it.productCategoryCode != ALL_PRODUCTS_GROUP_CODE }
+                    .filter { it.productCategoryCode != 0 }
+                    .distinctBy { it.productCategoryCode }
+
                 _allProductGroup.value = productGroups
+
+                _uiState.value = _uiState.value.copy(
+                    productGroups = uiGroups
+                )
+
                 updateStateLoading(false)
             }
         }
@@ -269,6 +334,10 @@ class HomeViewModel @Inject constructor(
         orderJob = viewModelScope.launch {
             homeRepository.getAllOrder.collect { orders ->
                 _allOrder.value = orders
+
+                _uiState.value = _uiState.value.copy(
+                    orders = orders
+                )
             }
         }
     }
@@ -314,12 +383,22 @@ class HomeViewModel @Inject constructor(
             isLoading = isLoading,
             error = null
         )
+
+        _uiState.value = _uiState.value.copy(
+            isLoading = isLoading,
+            errorMessage = null
+        )
     }
 
     private fun updateStateError(errorMessage: String?) {
         _state.value = _state.value.copy(
             isLoading = false,
             error = errorMessage
+        )
+
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            errorMessage = errorMessage
         )
     }
 }
