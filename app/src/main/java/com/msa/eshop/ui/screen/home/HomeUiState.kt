@@ -13,12 +13,17 @@ data class HomeUiState(
     val productGroups: List<ProductGroupEntity> = emptyList(),
     val banners: List<BannerModel> = emptyList(),
     val orders: List<OrderEntity> = emptyList(),
+
     val discounts: List<DiscountResultModel> = emptyList(),
+    val activeDiscountProductCode: String? = null,
+
     val selectedGroupCode: Int = ALL_PRODUCTS_GROUP_CODE,
     val searchQuery: String = "",
+
     val isLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val isDiscountLoading: Boolean = false,
+
     val errorMessage: String? = null
 ) {
     val isInitialLoading: Boolean
@@ -26,4 +31,12 @@ data class HomeUiState(
 
     val shouldShowEmpty: Boolean
         get() = !isLoading && products.isEmpty() && errorMessage == null
+
+    val hasProducts: Boolean
+        get() = products.isNotEmpty()
 }
+//
+//private data class HomeFilterState(
+//    val groupCode: Int = ALL_PRODUCTS_GROUP_CODE,
+//    val searchQuery: String = ""
+//)

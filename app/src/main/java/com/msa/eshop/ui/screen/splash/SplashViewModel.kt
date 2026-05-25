@@ -10,8 +10,10 @@ import com.msa.eshop.ui.navigation.Route
 import com.msa.eshop.utils.CompanionValues
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
@@ -19,13 +21,12 @@ class SplashViewModel @Inject constructor(
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
-    private var hasStarted = false
+    private var splashJob: Job? = null
 
     fun startSplashFlow() {
-        if (hasStarted) return
-        hasStarted = true
+        if (splashJob?.isActive == true) return
 
-        viewModelScope.launch {
+        splashJob = viewModelScope.launch {
             delay(SPLASH_DELAY_MS)
 
             val token = sharedPreferences
@@ -33,30 +34,21 @@ class SplashViewModel @Inject constructor(
                 .orEmpty()
                 .trim()
 
-            if (token.isNotEmpty()) {
-                navigateToHome()
+            val destination = if (token.isValidToken()) {
+                Timber.tag(TAG).d("Splash destination: home")
+                Route.HomeScreen.route
             } else {
-                navigateToLogin()
+                Timber.tag(TAG).d("Splash destination: login")
+                Route.LoginScreen.route
             }
+
+            navManager.navigate(
+                NavInfo(
+                    id = destination,
+                    navOption = splashPopUpOptions()
+                )
+            )
         }
-    }
-
-    private fun navigateToHome() {
-        navManager.navigate(
-            NavInfo(
-                id = Route.HomeScreen.route,
-                navOption = splashPopUpOptions()
-            )
-        )
-    }
-
-    private fun navigateToLogin() {
-        navManager.navigate(
-            NavInfo(
-                id = Route.LoginScreen.route,
-                navOption = splashPopUpOptions()
-            )
-        )
     }
 
     private fun splashPopUpOptions(): NavOptions {
@@ -69,7 +61,20 @@ class SplashViewModel @Inject constructor(
             .build()
     }
 
+    private fun String.isValidToken(): Boolean {
+        if (isBlank()) return false
+
+        val normalized = lowercase()
+
+        return normalized != "null" &&
+                normalized != "undefined" &&
+                normalized != "none" &&
+                length >= MIN_TOKEN_LENGTH
+    }
+
     companion object {
-        private const val SPLASH_DELAY_MS = 1500L
+        private const val TAG = "SplashViewModel"
+        private const val SPLASH_DELAY_MS = 1_350L
+        private const val MIN_TOKEN_LENGTH = 8
     }
 }

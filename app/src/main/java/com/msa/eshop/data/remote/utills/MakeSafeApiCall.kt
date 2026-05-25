@@ -1,9 +1,6 @@
 package com.msa.eshop.data.remote.utills
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.os.Build
 import android.os.SystemClock
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
@@ -17,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import org.json.JSONArray
 import org.json.JSONObject
 import retrofit2.Response
 import timber.log.Timber
@@ -32,210 +30,242 @@ class MakeSafeApiCall @Inject constructor(
             emit(Resource.loading())
 
             val startedAt = SystemClock.elapsedRealtime()
-            val networkSnapshot = getNetworkSnapshot()
+            val networkSnapshot = context.networkSnapshot()
 
-            Timber.tag(TAG).d(
-                "API request started | network=[$networkSnapshot]"
+            Timber.tag(Constant.NETWORK_LOG_TAG).d(
+                "API request started | network=[${networkSnapshot.description}]"
             )
 
             /*
-             * نکته مهم:
-             * اینجا عمداً از NET_CAPABILITY_VALIDATED برای بلاک کردن request استفاده نمی‌کنیم.
-             * چون در اینترنت داخلی/سازمانی/ملی ممکن است شبکه فعال باشد ولی validated=false شود.
+             * فقط نبود شبکه فعال را block می‌کنیم.
+             * validated=false در اینترنت داخلی/سازمانی نباید مانع request شود.
              */
-            if (!hasActiveNetwork()) {
-                Timber.tag(TAG).e(
-                    "API request blocked | reason=no_active_network | network=[$networkSnapshot]"
-                )
-
-                emit(
-                    Resource.error(
-                        error = MsaError(
-                            code = ErrorCode.NETWORK_NOT_AVAILABLE,
-                            message = "هیچ شبکه فعالی روی دستگاه پیدا نشد"
-                        )
-                    )
-                )
+            if (!networkSnapshot.hasActiveNetwork) {
+                emitNetworkNotAvailable(networkSnapshot)
                 return@flow
             }
 
             val response = api.invoke()
             val durationMs = SystemClock.elapsedRealtime() - startedAt
+
             val request = response.raw().request
-            val url = sanitizeUrl(request.url.toString())
             val method = request.method
+            val url = request.url.toString().sanitizeUrl()
             val code = response.code()
 
-            Timber.tag(TAG).d(
+            Timber.tag(Constant.NETWORK_LOG_TAG).d(
                 "API response received | method=$method | url=$url | code=$code | success=${response.isSuccessful} | duration=${durationMs}ms"
             )
 
             val body = response.body()
 
-            if (response.isSuccessful && body != null) {
-                Timber.tag(TAG).d(
-                    "API success | method=$method | url=$url | code=$code | duration=${durationMs}ms"
-                )
+            if (response.isSuccessful) {
+                if (body != null) {
+                    Timber.tag(Constant.NETWORK_LOG_TAG).d(
+                        "API success | method=$method | url=$url | code=$code | duration=${durationMs}ms"
+                    )
 
-                emit(Resource.success(body))
-            } else {
-                val rawError = response.errorBody()?.string()
-                val serverMessage = parseErrorMessage(rawError)
+                    emit(Resource.success(body))
+                } else {
+                    Timber.tag(Constant.NETWORK_LOG_TAG).e(
+                        "API success but body is null | method=$method | url=$url | code=$code | duration=${durationMs}ms"
+                    )
 
-                val message = serverMessage
-                    ?: response.message().takeIf { it.isNotBlank() }
-                    ?: "خطا در ارتباط با سرور"
-
-                Timber.tag(TAG).e(
-                    "API http error | method=$method | url=$url | code=$code | message=$message | rawError=${rawError.orEmpty().take(MAX_ERROR_LOG_LENGTH)} | duration=${durationMs}ms"
-                )
-
-                emit(
-                    Resource.error(
-                        error = MsaError(
-                            code = code,
-                            message = message
+                    emit(
+                        Resource.error(
+                            error = MsaError(
+                                code = ErrorCode.NULL_RESPONSE_BODY,
+                                message = "پاسخ سرور خالی است",
+                                url = url,
+                                method = method
+                            )
                         )
                     )
-                )
+                }
+
+                return@flow
             }
+
+            val rawError = response.errorBody()?.string()
+            val serverMessage = parseErrorMessage(rawError)
+
+            val message = serverMessage
+                ?: response.message().takeIf { it.isNotBlank() }
+                ?: httpStatusMessage(code)
+
+            Timber.tag(Constant.NETWORK_LOG_TAG).e(
+                "API http error | method=$method | url=$url | code=$code | message=$message | rawError=${rawError.orEmpty().take(Constant.MAX_ERROR_LOG_LENGTH)} | duration=${durationMs}ms"
+            )
+
+            emit(
+                Resource.error(
+                    error = MsaError(
+                        code = code,
+                        message = message,
+                        rawError = rawError,
+                        url = url,
+                        method = method
+                    )
+                )
+            )
         }
             .flowOn(Dispatchers.IO)
             .catch { throwable ->
-                val message = throwable.toUserMessage()
-                val code = throwable.toErrorCode()
+                val networkSnapshot = context.networkSnapshot()
+                val error = throwable.toMsaError(networkSnapshot)
 
-                Timber.tag(TAG).e(
+                Timber.tag(Constant.NETWORK_LOG_TAG).e(
                     throwable,
-                    "API exception | code=$code | message=$message | network=[${getNetworkSnapshot()}]"
+                    "API exception | code=${error.code} | message=${error.safeMessage} | network=[${networkSnapshot.description}]"
                 )
 
-                emit(
-                    Resource.error(
-                        error = MsaError(
-                            code = code,
-                            message = message
-                        )
-                    )
-                )
+                emit(Resource.error(error = error))
             }
     }
 
-    private fun hasActiveNetwork(): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return false
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<Resource<Nothing>>.emitNetworkNotAvailable(
+        networkSnapshot: NetworkSnapshot
+    ) {
+        Timber.tag(Constant.NETWORK_LOG_TAG).e(
+            "API request blocked | reason=no_active_network | network=[${networkSnapshot.description}]"
+        )
 
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            connectivityManager.activeNetwork != null
-        } else {
-            @Suppress("DEPRECATION")
-            connectivityManager.activeNetworkInfo?.isConnected == true
-        }
-    }
-
-    private fun getNetworkSnapshot(): String {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return "connectivity_manager=null"
-
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val activeNetwork = connectivityManager.activeNetwork
-                ?: return "active_network=null"
-
-            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-                ?: return "capabilities=null"
-
-            val transports = mutableListOf<String>()
-
-            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                transports.add("wifi")
-            }
-
-            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                transports.add("cellular")
-            }
-
-            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-                transports.add("ethernet")
-            }
-
-            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                transports.add("vpn")
-            }
-
-            val hasInternet = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            val isValidated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            val isCaptivePortal = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)
-
-            "transports=${transports.joinToString().ifBlank { "unknown" }}, hasInternet=$hasInternet, validated=$isValidated, captivePortal=$isCaptivePortal"
-        } else {
-            @Suppress("DEPRECATION")
-            val info = connectivityManager.activeNetworkInfo
-
-            "type=${info?.typeName}, connected=${info?.isConnected}, available=${info?.isAvailable}"
-        }
+        emit(
+            Resource.error(
+                error = MsaError(
+                    code = ErrorCode.NETWORK_NOT_AVAILABLE,
+                    message = "هیچ شبکه فعالی روی دستگاه پیدا نشد"
+                )
+            )
+        )
     }
 
     private fun parseErrorMessage(rawError: String?): String? {
         if (rawError.isNullOrBlank()) return null
 
         return runCatching {
-            val json = JSONObject(rawError)
+            val trimmed = rawError.trim()
 
-            json.optString("message")
-                .ifBlank { json.optString("error") }
-                .ifBlank { json.optString("detail") }
-        }.getOrNull()?.takeIf { it.isNotBlank() }
+            when {
+                trimmed.startsWith("{") -> parseJsonObjectMessage(JSONObject(trimmed))
+                trimmed.startsWith("[") -> parseJsonArrayMessage(JSONArray(trimmed))
+                else -> trimmed.takeIf { it.length <= 250 }
+            }
+        }.getOrElse { throwable ->
+            Timber.tag(Constant.NETWORK_LOG_TAG).e(
+                throwable,
+                "Parse error body failed | raw=${rawError.take(Constant.MAX_ERROR_LOG_LENGTH)}"
+            )
+            null
+        }?.takeIf { it.isNotBlank() }
     }
 
-    private fun Throwable.toUserMessage(): String {
+    private fun parseJsonObjectMessage(json: JSONObject): String? {
+        return json.optString("message")
+            .ifBlank { json.optString("error") }
+            .ifBlank { json.optString("detail") }
+            .ifBlank { json.optString("title") }
+            .ifBlank {
+                val errors = json.opt("errors")
+                when (errors) {
+                    is JSONObject -> errors.keys().asSequence()
+                        .mapNotNull { key ->
+                            val value = errors.opt(key)
+                            when (value) {
+                                is JSONArray -> value.optString(0)
+                                else -> value?.toString()
+                            }
+                        }
+                        .firstOrNull()
+
+                    is JSONArray -> errors.optString(0)
+                    else -> ""
+                }
+            }
+            .takeIf { it!!.isNotBlank() }
+    }
+
+    private fun parseJsonArrayMessage(json: JSONArray): String? {
+        if (json.length() == 0) return null
+
+        return when (val first = json.opt(0)) {
+            is JSONObject -> parseJsonObjectMessage(first)
+            else -> first?.toString()
+        }
+    }
+
+    private fun httpStatusMessage(code: Int): String {
+        return when (code) {
+            ErrorCode.HTTP_BAD_REQUEST -> "درخواست نامعتبر است"
+            ErrorCode.HTTP_UNAUTHORIZED -> "نیاز به ورود مجدد دارید"
+            ErrorCode.HTTP_FORBIDDEN -> "شما مجوز دسترسی به این بخش را ندارید"
+            ErrorCode.HTTP_NOT_FOUND -> "آدرس سرویس پیدا نشد"
+            ErrorCode.HTTP_CONFLICT -> "این درخواست با وضعیت فعلی سیستم ناسازگار است"
+            ErrorCode.HTTP_UNPROCESSABLE -> "اطلاعات ارسال‌شده معتبر نیست"
+            in 500..599 -> "خطای سرور رخ داد"
+            else -> "خطا در ارتباط با سرور"
+        }
+    }
+
+    private fun Throwable.toMsaError(
+        networkSnapshot: NetworkSnapshot
+    ): MsaError {
         return when (this) {
             is UnknownHostException -> {
-                "آدرس سرور پیدا نشد. اتصال شبکه، DNS یا آدرس سرور را بررسی کنید"
+                MsaError(
+                    code = ErrorCode.NETWORK_DNS_FAILED,
+                    message = "آدرس سرور پیدا نشد. اتصال شبکه، DNS یا آدرس سرور را بررسی کنید",
+                    rawError = stackTraceToString()
+                )
             }
 
             is ConnectException -> {
-                "اتصال به سرور برقرار نشد. ممکن است سرور در دسترس نباشد یا شبکه به آن مسیر نداشته باشد"
+                MsaError(
+                    code = ErrorCode.NETWORK_CONNECTION_FAILED,
+                    message = "اتصال به سرور برقرار نشد. ممکن است سرور در دسترس نباشد یا شبکه به آن مسیر نداشته باشد",
+                    rawError = stackTraceToString()
+                )
             }
 
             is SocketTimeoutException -> {
-                "زمان انتظار اتصال به سرور تمام شد"
+                MsaError(
+                    code = ErrorCode.NETWORK_TIMEOUT,
+                    message = "زمان انتظار اتصال به سرور تمام شد",
+                    rawError = stackTraceToString()
+                )
             }
 
             is SSLException -> {
-                "خطای امنیتی در اتصال به سرور رخ داد"
+                MsaError(
+                    code = ErrorCode.NETWORK_SSL_FAILED,
+                    message = "خطای امنیتی در اتصال به سرور رخ داد",
+                    rawError = stackTraceToString()
+                )
             }
 
             is IOException -> {
-                "خطای شبکه رخ داد. اتصال داخلی یا دسترسی به سرور را بررسی کنید"
+                MsaError(
+                    code = ErrorCode.NETWORK_CONNECTION_FAILED,
+                    message = if (networkSnapshot.hasActiveNetwork) {
+                        "خطای شبکه رخ داد. اتصال داخلی یا دسترسی به سرور را بررسی کنید"
+                    } else {
+                        "هیچ شبکه فعالی روی دستگاه پیدا نشد"
+                    },
+                    rawError = stackTraceToString()
+                )
             }
 
             else -> {
-                message ?: "خطای نامشخص رخ داد"
+                MsaError(
+                    code = ErrorCode.CATCH_BODY,
+                    message = message ?: "خطای نامشخص رخ داد",
+                    rawError = stackTraceToString()
+                )
             }
         }
     }
 
-    private fun Throwable.toErrorCode(): Int {
-        return when (this) {
-            is UnknownHostException,
-            is ConnectException,
-            is SocketTimeoutException,
-            is IOException -> ErrorCode.NETWORK_NOT_AVAILABLE
-
-            else -> ErrorCode.CATCH_BODY
-        }
-    }
-
-    private fun sanitizeUrl(url: String): String {
-        /*
-         * برای امنیت، query string را لاگ نمی‌کنیم.
-         * چون ممکن است token، username یا داده حساس داخل query باشد.
-         */
-        return url.substringBefore("?")
-    }
-
-    companion object {
-        private const val TAG = "NetworkUtils"
-        private const val MAX_ERROR_LOG_LENGTH = 500
+    private fun String.sanitizeUrl(): String {
+        return substringBefore("?")
     }
 }

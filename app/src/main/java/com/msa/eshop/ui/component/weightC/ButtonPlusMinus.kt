@@ -1,7 +1,6 @@
 package com.msa.eshop.ui.component.weightC
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -18,10 +17,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -31,82 +33,101 @@ fun CounterButtonNew(
     onValueIncreaseClick: () -> Unit = {},
     onValue: (String) -> Unit,
     onValueClearClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    minValue: Int = 0,
+    maxValue: Int = 999_999,
+    enabled: Boolean = true
 ) {
-    val intValue = value.toIntOrNull()?.coerceAtLeast(0) ?: 0
+    val safeMin = minValue.coerceAtLeast(0)
+    val safeMax = maxValue.coerceAtLeast(safeMin)
+    val intValue = value.toIntOrNull()
+        ?.coerceIn(safeMin, safeMax)
+        ?: safeMin
 
-    Row(
-        modifier = modifier.widthIn(min = 136.dp, max = 168.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        IconButton(
-            onClick = {
-                val newValue = (intValue - 1).coerceAtLeast(0).toString()
-                onValue(newValue)
-                onValueDecreaseClick()
-            },
-            colors = IconButtonDefaults.iconButtonColors(
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-            ),
-            modifier = Modifier.border(
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                shape = RoundedCornerShape(10.dp)
-            )
+    fun emitValue(newValue: Int) {
+        val clamped = newValue.coerceIn(safeMin, safeMax)
+        onValue(clamped.toString())
+    }
+
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+            modifier = modifier.widthIn(min = 136.dp, max = 180.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Remove,
-                contentDescription = "کم کردن"
-            )
-        }
+            IconButton(
+                enabled = enabled && intValue > safeMin,
+                onClick = {
+                    emitValue(intValue - 1)
+                    onValueDecreaseClick()
+                },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                ),
+                modifier = Modifier.border(
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    shape = RoundedCornerShape(10.dp)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Remove,
+                    contentDescription = "کم کردن"
+                )
+            }
 
-        OutlinedTextField(
-            value = intValue.toString(),
-            onValueChange = { newValue ->
-                val filtered = newValue.filter { it.isDigit() }
-                if (filtered.isBlank()) {
-                    onValue("0")
-                } else {
-                    onValue(filtered.toIntOrNull()?.coerceAtLeast(0)?.toString() ?: "0")
-                }
-            },
-            singleLine = true,
-            modifier = Modifier.weight(1f),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                textAlign = TextAlign.Center
-            ),
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.outline,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface
-            )
-        )
+            OutlinedTextField(
+                value = intValue.toString(),
+                onValueChange = { newValue ->
+                    val filtered = newValue.filter(Char::isDigit)
 
-        IconButton(
-            onClick = {
-                val newValue = (intValue + 1).toString()
-                onValue(newValue)
-                onValueIncreaseClick()
-            },
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                    if (filtered.isBlank()) {
+                        emitValue(safeMin)
+                        onValueClearClick()
+                    } else {
+                        emitValue(filtered.toIntOrNull() ?: safeMin)
+                    }
+                },
+                enabled = enabled,
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number
+                ),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    textAlign = TextAlign.Center
+                ),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                )
             )
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Add,
-                contentDescription = "زیاد کردن"
-            )
+
+            IconButton(
+                enabled = enabled && intValue < safeMax,
+                onClick = {
+                    emitValue(intValue + 1)
+                    onValueIncreaseClick()
+                },
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = "زیاد کردن"
+                )
+            }
         }
     }
 }
 
-/*
- * برای سازگاری با کدهای قدیمی.
- */
 @Composable
 fun CounterButton(
     value: String,

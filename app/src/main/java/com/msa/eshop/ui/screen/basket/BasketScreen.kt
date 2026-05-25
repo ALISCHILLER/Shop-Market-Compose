@@ -20,7 +20,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -33,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.msa.eshop.R
 import com.msa.eshop.ui.common.card.BasketCard
 import com.msa.eshop.ui.common.topBar.TopBarDetails
+import com.msa.eshop.ui.component.dialog.ErrorDialog
+import com.msa.eshop.ui.component.lottiefile.LoadingAnimate
 import com.msa.eshop.ui.theme.PlatinumSilver
 import com.msa.eshop.utils.Currency
 
@@ -41,63 +42,80 @@ fun BasketScreen(
     modifier: Modifier = Modifier,
     viewModel: BasketViewModel = hiltViewModel()
 ) {
-    val orders = viewModel.allOrder.collectAsStateWithLifecycle().value
+    val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
 
-    val totalPrice = remember(orders) {
-        orders.sumOf { order ->
-            order.numberOrder.toLong() * order.price.toLong()
-        }
+    uiState.errorMessage?.let { error ->
+        ErrorDialog(
+            error,
+            { viewModel.clearError() },
+            false
+        )
     }
 
-    Scaffold(
-        modifier = modifier.background(PlatinumSilver),
-        containerColor = PlatinumSilver,
-        topBar = {
-            TopBarDetails("سبد خرید")
-        },
-        bottomBar = {
-            BasketBottomBar(
-                totalPrice = totalPrice,
-                enabled = orders.isNotEmpty(),
-                onSubmit = viewModel::navigateToSimulate
-            )
-        }
-    ) { innerPadding ->
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            if (orders.isEmpty()) {
-                EmptyBasket(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(PlatinumSilver)
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = PlatinumSilver,
+            topBar = {
+                TopBarDetails("سبد خرید")
+            },
+            bottomBar = {
+                BasketBottomBar(
+                    totalPrice = uiState.totalPrice,
+                    enabled = uiState.canSubmit,
+                    onSubmit = viewModel::navigateToSimulate
                 )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize(),
-                    contentPadding = PaddingValues(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(
-                        items = orders,
-                        key = { it.id }
-                    ) { order ->
-                        BasketCard(
-                            orderEntity = order,
-                            onQuantityChange = { value1, value2 ->
-                                viewModel.updateOrderQuantity(
-                                    orderEntity = order,
-                                    value1 = value1,
-                                    value2 = value2
-                                )
-                            },
-                            onDelete = {
-                                viewModel.deleteOrder(order.id)
-                            }
+            }
+        ) { innerPadding ->
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                when {
+                    uiState.isEmpty -> {
+                        EmptyBasket(
+                            modifier = Modifier
+                                .padding(innerPadding)
+                                .fillMaxSize()
                         )
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .padding(innerPadding)
+                                .fillMaxSize(),
+                            contentPadding = PaddingValues(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(
+                                items = uiState.orders,
+                                key = { it.id },
+                                contentType = { "basket_item" }
+                            ) { order ->
+                                BasketCard(
+                                    orderEntity = order,
+                                    onQuantityChange = { value1, value2 ->
+                                        viewModel.updateOrderQuantity(
+                                            orderEntity = order,
+                                            value1 = value1,
+                                            value2 = value2
+                                        )
+                                    },
+                                    onDelete = {
+                                        viewModel.deleteOrder(order.id)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
+        }
+
+        if (uiState.isLoading) {
+            LoadingAnimate()
         }
     }
 }

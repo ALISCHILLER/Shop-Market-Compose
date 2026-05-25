@@ -10,81 +10,96 @@ import com.msa.eshop.R
 
 val EShopFontFamily = FontFamily(
     Font(R.font.iransans_medium, FontWeight.Normal),
+    Font(R.font.iransans_medium, FontWeight.Medium),
     Font(R.font.vazirmatn_semibold, FontWeight.SemiBold),
     Font(R.font.kalameh_bold, FontWeight.Bold)
 )
 
 val iranianSansFont = Font(R.font.iransans_medium)
 
+private val BaseTextStyle = TextStyle(
+    fontFamily = EShopFontFamily,
+    letterSpacing = 0.sp
+)
+
 val Typography = Typography(
-    displaySmall = TextStyle(
-        fontFamily = EShopFontFamily,
+    displayLarge = BaseTextStyle.copy(
+        fontWeight = FontWeight.Bold,
+        fontSize = 34.sp,
+        lineHeight = 44.sp
+    ),
+    displayMedium = BaseTextStyle.copy(
+        fontWeight = FontWeight.Bold,
+        fontSize = 30.sp,
+        lineHeight = 40.sp
+    ),
+    displaySmall = BaseTextStyle.copy(
         fontWeight = FontWeight.Bold,
         fontSize = 26.sp,
-        lineHeight = 34.sp,
-        letterSpacing = 0.sp
+        lineHeight = 36.sp
     ),
-    headlineSmall = TextStyle(
-        fontFamily = EShopFontFamily,
+
+    headlineLarge = BaseTextStyle.copy(
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 34.sp
+    ),
+    headlineMedium = BaseTextStyle.copy(
         fontWeight = FontWeight.SemiBold,
         fontSize = 22.sp,
-        lineHeight = 30.sp,
-        letterSpacing = 0.sp
+        lineHeight = 32.sp
     ),
-    titleLarge = TextStyle(
-        fontFamily = EShopFontFamily,
+    headlineSmall = BaseTextStyle.copy(
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 30.sp
+    ),
+
+    titleLarge = BaseTextStyle.copy(
         fontWeight = FontWeight.SemiBold,
         fontSize = 19.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
+        lineHeight = 28.sp
     ),
-    titleMedium = TextStyle(
-        fontFamily = EShopFontFamily,
+    titleMedium = BaseTextStyle.copy(
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.sp
+        lineHeight = 25.sp
     ),
-    titleSmall = TextStyle(
-        fontFamily = EShopFontFamily,
-        fontWeight = FontWeight.Normal,
+    titleSmall = BaseTextStyle.copy(
+        fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        lineHeight = 22.sp
     ),
-    bodyLarge = TextStyle(
-        fontFamily = EShopFontFamily,
+
+    bodyLarge = BaseTextStyle.copy(
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        lineHeight = 26.sp,
-        letterSpacing = 0.sp
+        lineHeight = 27.sp
     ),
-    bodyMedium = TextStyle(
-        fontFamily = EShopFontFamily,
+    bodyMedium = BaseTextStyle.copy(
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        lineHeight = 23.sp
     ),
-    bodySmall = TextStyle(
-        fontFamily = EShopFontFamily,
+    bodySmall = BaseTextStyle.copy(
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.sp
+        lineHeight = 19.sp
     ),
-    labelLarge = TextStyle(
-        fontFamily = EShopFontFamily,
+
+    labelLarge = BaseTextStyle.copy(
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
-        lineHeight = 22.sp,
-        letterSpacing = 0.sp
+        lineHeight = 22.sp
     ),
-    labelSmall = TextStyle(
-        fontFamily = EShopFontFamily,
+    labelMedium = BaseTextStyle.copy(
+        fontWeight = FontWeight.Medium,
+        fontSize = 13.sp,
+        lineHeight = 20.sp
+    ),
+    labelSmall = BaseTextStyle.copy(
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
-        lineHeight = 18.sp,
-        letterSpacing = 0.sp
+        lineHeight = 18.sp
     )
 )

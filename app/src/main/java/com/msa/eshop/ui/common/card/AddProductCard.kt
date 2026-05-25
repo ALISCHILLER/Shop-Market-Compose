@@ -22,10 +22,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -49,11 +50,11 @@ fun AddProduct(
     onSaveOrder: (ProductModelEntity, Int, Int) -> Unit,
     onDismissRequest: () -> Unit
 ) {
-    var value1 by remember(product.id, order?.numberOrder1) {
+    var value1 by rememberSaveable(product.id, order?.numberOrder1) {
         mutableIntStateOf(order?.numberOrder1 ?: 0)
     }
 
-    var value2 by remember(product.id, order?.numberOrder2) {
+    var value2 by rememberSaveable(product.id, order?.numberOrder2) {
         mutableIntStateOf(order?.numberOrder2 ?: 0)
     }
 
@@ -68,6 +69,7 @@ fun AddProduct(
         price = product.price
     )
 
+    val hasSecondUnit = !product.fullNameKala2.isNullOrBlank() && product.convertFactor2 > 0
     val canSubmit = totalValue > 0 || order != null
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -96,6 +98,7 @@ fun AddProduct(
                         model = product.productImage,
                         contentDescription = product.productName,
                         modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
                         error = painterResource(id = R.drawable.not_load_image),
                         placeholder = painterResource(id = R.drawable.not_load_image)
                     )
@@ -113,45 +116,24 @@ fun AddProduct(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "فی:",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        Text(
-                            text = Currency(product.price).toFormattedString(),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        Text(
-                            text = "ریال",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    PriceLine(
+                        price = product.price,
+                        label = "فی:"
+                    )
                 }
             }
 
             QuantityRow(
                 title = product.fullNameKala1 ?: "عدد",
                 value = value1,
-                onValueChange = { value1 = it }
+                onValueChange = { value1 = it.coerceAtLeast(0) }
             )
 
-            if (!product.fullNameKala2.isNullOrBlank() && product.convertFactor2 > 0) {
+            if (hasSecondUnit) {
                 QuantityRow(
-                    title = product.fullNameKala2,
+                    title = product.fullNameKala2.orEmpty(),
                     value = value2,
-                    onValueChange = { value2 = it }
+                    onValueChange = { value2 = it.coerceAtLeast(0) }
                 )
             }
 
@@ -241,5 +223,37 @@ private fun QuantityRow(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun PriceLine(
+    price: Int,
+    label: String
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Text(
+            text = Currency(price).toFormattedString(),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Text(
+            text = "ریال",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

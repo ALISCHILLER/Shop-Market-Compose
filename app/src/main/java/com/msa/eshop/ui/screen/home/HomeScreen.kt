@@ -42,6 +42,17 @@ fun HomeScreen(
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
 
+    HomeContent(
+        uiState = uiState,
+        onEvent = viewModel::onEvent
+    )
+}
+
+@Composable
+private fun HomeContent(
+    uiState: HomeUiState,
+    onEvent: (HomeEvent) -> Unit
+) {
     val orderByProductId = remember(uiState.orders) {
         uiState.orders.associateBy { it.id }
     }
@@ -57,7 +68,9 @@ fun HomeScreen(
             topBar = {
                 TopBarSearch(
                     query = uiState.searchQuery,
-                    onSearchChange = viewModel::onSearchChanged
+                    onSearchChange = {
+                        onEvent(HomeEvent.SearchChanged(it))
+                    }
                 )
             }
         ) { innerPadding ->
@@ -67,7 +80,9 @@ fun HomeScreen(
                         .fillMaxSize()
                         .padding(innerPadding),
                     state = rememberSwipeRefreshState(uiState.isRefreshing),
-                    onRefresh = viewModel::refresh
+                    onRefresh = {
+                        onEvent(HomeEvent.Refresh)
+                    }
                 ) {
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 168.dp),
@@ -81,10 +96,12 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        item(
-                            span = { GridItemSpan(maxLineSpan) }
-                        ) {
-                            if (uiState.banners.isNotEmpty()) {
+                        if (uiState.banners.isNotEmpty()) {
+                            item(
+                                span = { GridItemSpan(maxLineSpan) },
+                                key = "banners",
+                                contentType = "banners"
+                            ) {
                                 VerticalSlider(
                                     imageUrl = uiState.banners,
                                     modifier = Modifier
@@ -94,33 +111,48 @@ fun HomeScreen(
                             }
                         }
 
-                        item(
-                            span = { GridItemSpan(maxLineSpan) }
-                        ) {
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 6.dp),
-                                reverseLayout = false
+                        if (uiState.productGroups.isNotEmpty()) {
+                            item(
+                                span = { GridItemSpan(maxLineSpan) },
+                                key = "product_groups",
+                                contentType = "product_groups"
                             ) {
-                                items(
-                                    items = uiState.productGroups,
-                                    key = { it.productCategoryCode }
-                                ) { productGroup ->
-                                    ProductGroupCard(
-                                        productGroupEntity = productGroup,
-                                        isSelected = uiState.selectedGroupCode == productGroup.productCategoryCode,
-                                        onClick = {
-                                            viewModel.onGroupSelected(it.productCategoryCode)
-                                        }
+                                LazyRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    contentPadding = PaddingValues(
+                                        horizontal = 2.dp,
+                                        vertical = 6.dp
                                     )
+                                ) {
+                                    items(
+                                        items = uiState.productGroups,
+                                        key = { it.productCategoryCode },
+                                        contentType = { "product_group" }
+                                    ) { productGroup ->
+                                        ProductGroupCard(
+                                            productGroupEntity = productGroup,
+                                            isSelected = uiState.selectedGroupCode == productGroup.productCategoryCode,
+                                            onClick = {
+                                                onEvent(
+                                                    HomeEvent.GroupSelected(
+                                                        it.productCategoryCode
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
 
                         when {
                             uiState.errorMessage != null && uiState.products.isEmpty() -> {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                item(
+                                    span = { GridItemSpan(maxLineSpan) },
+                                    key = "error",
+                                    contentType = "state"
+                                ) {
                                     StateMessage(
                                         message = uiState.errorMessage,
                                         modifier = Modifier.padding(top = 40.dp)
@@ -129,7 +161,11 @@ fun HomeScreen(
                             }
 
                             uiState.shouldShowEmpty -> {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                item(
+                                    span = { GridItemSpan(maxLineSpan) },
+                                    key = "empty",
+                                    contentType = "state"
+                                ) {
                                     StateMessage(
                                         message = "کالایی برای نمایش وجود ندارد",
                                         modifier = Modifier.padding(top = 40.dp)
@@ -140,25 +176,35 @@ fun HomeScreen(
                             else -> {
                                 items(
                                     items = uiState.products,
-                                    key = { it.id }
+                                    key = { it.id },
+                                    contentType = { "product" }
                                 ) { product ->
                                     ProductCard(
                                         modifier = Modifier.fillMaxWidth(),
                                         product = product,
                                         order = orderByProductId[product.id],
-                                        discounts = uiState.discounts,
-                                        isDiscountLoading = uiState.isDiscountLoading,
+                                        discounts = if (uiState.activeDiscountProductCode == product.id) {
+                                            uiState.discounts
+                                        } else {
+                                            emptyList()
+                                        },
+                                        isDiscountLoading = uiState.isDiscountLoading &&
+                                                uiState.activeDiscountProductCode == product.id,
                                         onSaveOrder = { selectedProduct, value1, value2 ->
-                                            viewModel.saveProductOrder(
-                                                productModelEntity = selectedProduct,
-                                                value1 = value1,
-                                                value2 = value2
+                                            onEvent(
+                                                HomeEvent.ProductQuantitySaved(
+                                                    product = selectedProduct,
+                                                    value1 = value1,
+                                                    value2 = value2
+                                                )
                                             )
                                         },
                                         onDiscountClick = {
-                                            viewModel.discountRequest(it.id)
+                                            onEvent(HomeEvent.DiscountClicked(it))
                                         },
-                                        onClick = {}
+                                        onClick = {
+                                            onEvent(HomeEvent.ProductClicked(it))
+                                        }
                                     )
                                 }
                             }

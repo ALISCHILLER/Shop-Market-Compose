@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,10 +27,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,15 +53,15 @@ fun BasketCard(
     onQuantityChange: (Int, Int) -> Unit,
     onDelete: () -> Unit
 ) {
-    var value1 by remember(orderEntity.id, orderEntity.numberOrder1) {
-        mutableIntStateOf(orderEntity.numberOrder1)
+    var value1 by rememberSaveable(orderEntity.id, orderEntity.numberOrder1) {
+        mutableIntStateOf(orderEntity.numberOrder1.coerceAtLeast(0))
     }
 
-    var value2 by remember(orderEntity.id, orderEntity.numberOrder2) {
-        mutableIntStateOf(orderEntity.numberOrder2)
+    var value2 by rememberSaveable(orderEntity.id, orderEntity.numberOrder2) {
+        mutableIntStateOf(orderEntity.numberOrder2.coerceAtLeast(0))
     }
 
-    var showDeleteDialog by remember {
+    var showDeleteDialog by rememberSaveable {
         mutableStateOf(false)
     }
 
@@ -86,7 +88,10 @@ fun BasketCard(
         )
     }
 
-    fun updateQuantity(newValue1: Int = value1, newValue2: Int = value2) {
+    fun updateQuantity(
+        newValue1: Int = value1,
+        newValue2: Int = value2
+    ) {
         value1 = newValue1.coerceAtLeast(0)
         value2 = newValue2.coerceAtLeast(0)
         onQuantityChange(value1, value2)
@@ -95,7 +100,7 @@ fun BasketCard(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Card(
             modifier = modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
@@ -123,6 +128,7 @@ fun BasketCard(
                             model = orderEntity.productImage,
                             contentDescription = orderEntity.productName,
                             modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Fit,
                             error = painterResource(id = R.drawable.not_load_image),
                             placeholder = painterResource(id = R.drawable.not_load_image)
                         )
@@ -140,31 +146,9 @@ fun BasketCard(
                             overflow = TextOverflow.Ellipsis
                         )
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "فی:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            Text(
-                                text = Currency(orderEntity.price).toFormattedString(),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            Text(
-                                text = "ریال",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        PriceInline(
+                            price = orderEntity.price
+                        )
                     }
 
                     IconButton(
@@ -175,7 +159,7 @@ fun BasketCard(
                         Icon(
                             imageVector = Icons.Outlined.Delete,
                             contentDescription = "حذف",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -190,13 +174,15 @@ fun BasketCard(
 
                 if (!orderEntity.fullNameKala2.isNullOrBlank() && orderEntity.convertFactor2 > 0) {
                     BasketQuantityRow(
-                        title = orderEntity.fullNameKala2,
+                        title = orderEntity.fullNameKala2.orEmpty(),
                         value = value2,
                         onValueChange = {
                             updateQuantity(newValue2 = it)
                         }
                     )
                 }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -213,7 +199,7 @@ fun BasketCard(
                     Text(
                         text = Currency(totalPrice).toFormattedString(),
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))
@@ -260,5 +246,36 @@ private fun BasketQuantityRow(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun PriceInline(
+    price: Int
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "فی:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Text(
+            text = Currency(price).toFormattedString(),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Text(
+            text = "ریال",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

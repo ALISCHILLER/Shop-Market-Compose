@@ -1,14 +1,10 @@
 package com.msa.eshop.ui.screen.paymentMethod
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavOptions
 import com.msa.eshop.data.Model.request.InsertCartModelRequest
-import com.msa.eshop.data.Model.request.SimulateModelRequest
-import com.msa.eshop.data.local.entity.OrderAddressEntity
 import com.msa.eshop.data.local.entity.OrderEntity
-import com.msa.eshop.data.local.entity.PaymentMethodEntity
 import com.msa.eshop.data.repository.PaymentMethodRepository
 import com.msa.eshop.ui.navigation.NavInfo
 import com.msa.eshop.ui.navigation.NavManager
@@ -16,107 +12,295 @@ import com.msa.eshop.ui.navigation.Route
 import com.msa.eshop.utils.result.GeneralStateModel
 import com.msa.eshop.utils.result.makeRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import javax.inject.Inject
-
 
 @HiltViewModel
 class PaymentMethodViewModel @Inject constructor(
     private val paymentMethodRepository: PaymentMethodRepository,
-    private val navManager: NavManager,
-):ViewModel() {
+    private val navManager: NavManager
+) : ViewModel() {
 
+    private val _state = MutableStateFlow(GeneralStateModel())
+    val state: StateFlow<GeneralStateModel> = _state.asStateFlow()
 
-    private val _state: MutableStateFlow<GeneralStateModel> = MutableStateFlow(GeneralStateModel())
-    val state: StateFlow<GeneralStateModel> = _state
+    private val _uiState = MutableStateFlow(PaymentMethodUiState(isLoading = true))
+    val uiState: StateFlow<PaymentMethodUiState> = _uiState.asStateFlow()
 
+    private var observeJob: Job? = null
+    private var submitJob: Job? = null
 
-    private val _orderAddress =
-        MutableStateFlow<List<OrderAddressEntity>>(emptyList())
-    val orderAddress: StateFlow<List<OrderAddressEntity>> = _orderAddress
-
-
-    private val _paymentMethod =
-        MutableStateFlow<List<PaymentMethodEntity>>(emptyList())
-    val paymentMethod: StateFlow<List<PaymentMethodEntity>> = _paymentMethod
-     fun getOrderAddress() {
-        viewModelScope.launch {
-            paymentMethodRepository.getAllorderAddress.collect{
-                Log.e("PaymentMethodViewModel", "getAllProductGroup: $it")
-                _orderAddress.value=it
-            }
-        }
+    init {
+        observeLocalData()
     }
 
-     fun getAllPaymentMethod() {
-        viewModelScope.launch {
-            paymentMethodRepository.getAllPayment.collect{
-                Log.e("PaymentMethodViewModel", "getAllPaymentMethod: $it")
-                _paymentMethod.value=it
-            }
-        }
+    fun getOrderAddress() {
+        observeLocalData()
     }
 
-    fun getOrderToSimulate(addressId:String){
-        viewModelScope.launch {
-            paymentMethodRepository.getAllOrder.collect {
-                val simulateModelRequests: List<InsertCartModelRequest> = it.map { it.toSimulateModelRequest(addressId) }
-                InsertCartRequest(simulateModelRequests)
-            }
-        }
+    fun getAllPaymentMethod() {
+        observeLocalData()
     }
 
-    fun OrderEntity.toSimulateModelRequest(addressId:String): InsertCartModelRequest {
-        return InsertCartModelRequest(
-            productCode = this.productCode,
-            quantity = this.numberOrder,
-            customerAddressId = addressId,
-            paymentTermId ="16ccab60-279b-410a-90d1-b2673d5d1dd1" ,
-        )
-    }
-    private fun InsertCartRequest(insertCartModelRequest: List<InsertCartModelRequest>) {
-        makeRequest(
-            scope = viewModelScope,
-            request = { paymentMethodRepository.requestInsertCart(insertCartModelRequest) },
-            onSuccess = { response ->
-                viewModelScope.launch {
-                    response?.data?.let {
-                        Timber.tag("OrderAddressViewModel").d("InsertCartRequest SUCCESS: ${it}  ")
-                        paymentMethodRepository.deleatOrder()
-                        navigateToHome()
-                        updateStateLoading(false)
+    private fun observeLocalData() {
+        if (observeJob?.isActive == true) return
 
-                    }
+        observeJob = viewModelScope.launch {
+            updateStateLoading(true)
+
+            runCatching {
+                val addresses = paymentMethodRepository.getAllorderAddress.first()
+                val paymentMethods = paymentMethodRepository.getAllPayment.first()
+                val orders = paymentMethodRepository.getAllOrder.first()
+
+                _uiState.update {
+                    it.copy(
+                        selectedAddress = addresses.firstOrNull(),
+                        paymentMethod = paymentMethods.firstOrNull(),
+                        orders = orders,
+                        isLoading = false,
+                        errorMessage = null
+                    )
                 }
 
-            },
-            updateStateLoading = { isLoading -> updateStateLoading(isLoading) },
-            updateStateError = { errorMessage -> updateStateError(errorMessage) }
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = null
+                    )
+                }
+
+                Timber.tag(TAG).d(
+                    "Payment data loaded | addresses=${addresses.size}, paymentMethods=${paymentMethods.size}, orders=${orders.size}"
+                )
+            }.onFailure { throwable ->
+                Timber.tag(TAG).e(throwable, "Load payment data failed")
+                updateStateError("اطلاعات پرداخت دریافت نشد")
+            }
+        }
+    }
+
+    fun onPaymentSelected(option: String) {
+        _uiState.update {
+            it.copy(
+                selectedPaymentTitle = option.extractPaymentTitle(),
+                errorMessage = null
+            )
+        }
+    }
+
+    fun onReceiveSelected(option: String) {
+        _uiState.update {
+            it.copy(
+                selectedReceiveTitle = option,
+                errorMessage = null
+            )
+        }
+    }
+
+    fun submitPayment() {
+        val currentState = _uiState.value
+
+        if (currentState.isLoading) return
+
+        val address = currentState.selectedAddress
+        if (address == null) {
+            updateStateError("آدرس سفارش مشخص نیست")
+            return
+        }
+
+        val addressId = address.id
+        if (addressId.isBlank()) {
+            updateStateError("شناسه آدرس سفارش نامعتبر است")
+            return
+        }
+
+        if (currentState.orders.isEmpty()) {
+            updateStateError("سبد خرید خالی است")
+            return
+        }
+
+        if (submitJob?.isActive == true) return
+
+        updateStateLoading(true)
+
+        submitJob = viewModelScope.launch {
+            val paymentTermId = resolvePaymentTermId(currentState.selectedPaymentTitle)
+
+            val requests = currentState.orders.map { order ->
+                order.toInsertCartModelRequest(
+                    addressId = addressId,
+                    paymentTermId = paymentTermId
+                )
+            }
+
+            insertCartRequest(requests)
+        }
+    }
+
+    fun getOrderToSimulate(addressId: String) {
+        val safeAddressId = addressId.trim()
+
+        if (safeAddressId.isBlank()) {
+            updateStateError("شناسه آدرس سفارش نامعتبر است")
+            return
+        }
+
+        if (submitJob?.isActive == true) return
+
+        updateStateLoading(true)
+
+        submitJob = viewModelScope.launch {
+            runCatching {
+                paymentMethodRepository.getAllOrder.first()
+            }.onSuccess { orders ->
+                if (orders.isEmpty()) {
+                    updateStateError("سبد خرید خالی است")
+                    return@onSuccess
+                }
+
+                val paymentTermId = resolvePaymentTermId(_uiState.value.selectedPaymentTitle)
+
+                val requests = orders.map { order ->
+                    order.toInsertCartModelRequest(
+                        addressId = safeAddressId,
+                        paymentTermId = paymentTermId
+                    )
+                }
+
+                insertCartRequest(requests)
+            }.onFailure { throwable ->
+                Timber.tag(TAG).e(throwable, "Load orders for payment failed")
+                updateStateError("دریافت اقلام سبد خرید با خطا مواجه شد")
+            }
+        }
+    }
+
+    private fun OrderEntity.toInsertCartModelRequest(
+        addressId: String,
+        paymentTermId: String
+    ): InsertCartModelRequest {
+        return InsertCartModelRequest(
+            productCode = productCode,
+            quantity = numberOrder,
+            customerAddressId = addressId,
+            paymentTermId = paymentTermId
         )
     }
 
-    fun navigateToHome() {
+    private fun insertCartRequest(
+        insertCartModelRequest: List<InsertCartModelRequest>
+    ) {
+        if (insertCartModelRequest.isEmpty()) {
+            updateStateError("اقلامی برای ثبت سفارش وجود ندارد")
+            return
+        }
+
+        makeRequest(
+            scope = viewModelScope,
+            request = {
+                paymentMethodRepository.requestInsertCart(insertCartModelRequest)
+            },
+            onSuccess = { response ->
+                val hasResult = response?.data != null
+
+                if (!hasResult) {
+                    updateStateError("ثبت سفارش انجام نشد")
+                    return@makeRequest
+                }
+
+                viewModelScope.launch {
+                    runCatching {
+                        paymentMethodRepository.deleatOrder()
+                    }.onFailure { throwable ->
+                        Timber.tag(TAG).e(throwable, "Delete local orders failed")
+                    }
+
+                    updateStateLoading(false)
+                    navigateToHome()
+                }
+            },
+            updateStateLoading = ::updateStateLoading,
+            updateStateError = ::updateStateError
+        )
+    }
+
+    fun clearError() {
+        _state.update {
+            it.copy(error = null)
+        }
+
+        _uiState.update {
+            it.copy(errorMessage = null)
+        }
+    }
+
+    private fun resolvePaymentTermId(paymentTitle: String): String {
+        /*
+         * فعلاً Entity فقط قیمت‌ها را دارد و ID جداگانه برای نقدی/چک/عرفی ندارد.
+         * اگر API بعداً paymentTermId جداگانه داد، اینجا map می‌شود.
+         */
+        return DEFAULT_PAYMENT_TERM_ID
+    }
+
+    private fun navigateToHome() {
         navManager.navigate(
             NavInfo(
                 id = Route.HomeScreen.route,
-                navOption = NavOptions.Builder().setPopUpTo(
-                    Route.PaymentMethodScreen.route,
-                    inclusive = false
-                ).build()
+                navOption = NavOptions.Builder()
+                    .setPopUpTo(
+                        Route.PaymentMethodScreen.route,
+                        true
+                    )
+                    .setLaunchSingleTop(true)
+                    .build()
             )
         )
     }
 
     private fun updateStateLoading(isLoading: Boolean) {
-        _state.value = _state.value.copy(isLoading = isLoading, error = null)
+        _state.update {
+            it.copy(
+                isLoading = isLoading,
+                error = null
+            )
+        }
+
+        _uiState.update {
+            it.copy(
+                isLoading = isLoading,
+                errorMessage = null
+            )
+        }
     }
 
     private fun updateStateError(errorMessage: String?) {
-        _state.update { it.copy(isLoading = false, error = errorMessage) }
+        Timber.tag(TAG).e(errorMessage.orEmpty())
+
+        _state.update {
+            it.copy(
+                isLoading = false,
+                error = errorMessage
+            )
+        }
+
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                errorMessage = errorMessage
+            )
+        }
     }
 
+    companion object {
+        private const val TAG = "PaymentMethodVM"
+        private const val DEFAULT_PAYMENT_TERM_ID = "16ccab60-279b-410a-90d1-b2673d5d1dd1"
+    }
 }

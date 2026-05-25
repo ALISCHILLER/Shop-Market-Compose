@@ -1,36 +1,28 @@
-@file:OptIn(ExperimentalMaterialApi::class)
-
 package com.msa.eshop.ui.common.card
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.ContentAlpha
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.msa.eshop.R
@@ -39,60 +31,53 @@ import com.msa.eshop.R
 fun ProfileCard(
     modifier: Modifier = Modifier,
     title: String,
-    titleFontSize: TextUnit = MaterialTheme.typography.h6.fontSize,
-    titleFontWeight: FontWeight = FontWeight.Bold,
-    padding: Dp = 12.dp,
+    titleFontSize: TextUnit = MaterialTheme.typography.titleMedium.fontSize,
+    titleFontWeight: FontWeight = FontWeight.SemiBold,
+    padding: Dp = 14.dp,
     painter: Painter = painterResource(id = R.drawable.not_load_image),
-    onClick: () -> Unit,
+    onClick: () -> Unit
 ) {
-
-
-    Card(
-        modifier = Modifier
-            .padding(5.dp)
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(18.dp))
-            .animateContentSize(
-                animationSpec = tween(
-                    durationMillis = 300,
-                    easing = LinearOutSlowInEasing
-                )
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Card(
+            modifier = modifier
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .fillMaxWidth(),
+            onClick = onClick,
+            shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
             ),
-        onClick = {
-            onClick()
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(padding)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(padding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(painter = painter, contentDescription = "logo")
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp)
+                )
+
                 Text(
                     modifier = Modifier
-                        .weight(6f),
+                        .weight(1f)
+                        .padding(horizontal = 12.dp),
                     text = title,
                     fontSize = titleFontSize,
                     fontWeight = titleFontWeight,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                IconButton(
-                    modifier = Modifier
-                        .weight(1f)
-                        .alpha(ContentAlpha.medium)
-                        ,
-                    onClick = {
-                       onClick()
-                    }) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = "Drop-Down Arrow"
-                    )
-                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

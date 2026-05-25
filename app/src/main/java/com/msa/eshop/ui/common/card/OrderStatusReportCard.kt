@@ -8,191 +8,165 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.msa.eshop.R
 import com.msa.eshop.data.Model.response.ReportHistoryCustomerModel
-import com.msa.eshop.data.local.entity.ProductGroupEntity
-import com.msa.eshop.ui.theme.*
 
 @Composable
 fun OrderStatusReport(
     modifier: Modifier = Modifier,
     reportHistory: ReportHistoryCustomerModel,
-    onClick: (Int) -> Unit,
+    onClick: (Int) -> Unit
 ) {
+    val statusColor = parseStatusColor(
+        rawColor = reportHistory.color,
+        fallback = MaterialTheme.colorScheme.primary
+    )
+
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Card(
-            modifier = Modifier
-                .padding(horizontal = 3.dp, vertical = 3.dp)
+            modifier = modifier
                 .fillMaxWidth()
-                .shadow(10.dp, RoundedCornerShape(18.dp)),
+                .clickable { onClick(reportHistory.cartCode) },
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
-
-
-            Row(
-                modifier = modifier
-                    .padding(horizontal = 3.dp, vertical = 3.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Box(
                         modifier = Modifier
-                            .padding(5.dp)
-                            .size(90.dp, 65.dp)
+                            .size(width = 86.dp, height = 64.dp)
                             .background(
-                                color = PlatinumSilver, shape = RoundedCornerShape(18.dp)
-                            )
-                            .aspectRatio(1f)
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(18.dp)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-
                         Image(
                             painter = painterResource(id = R.drawable.ic_orderstatus),
-                            contentDescription = "orderstatus",
-                            modifier = Modifier.fillMaxSize(),
+                            contentDescription = "وضعیت سفارش",
+                            modifier = Modifier.size(44.dp)
                         )
                     }
 
                     Column(
-                        modifier = modifier.background(Color.White)
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-
                         Text(
-                            modifier = Modifier
-                                .padding(3.dp),
-                            text = "سبد شماره :${reportHistory.cartCode.toString()}",
-                            style = Typography.titleLarge,
+                            text = "سبد شماره ${reportHistory.cartCode}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
 
                         Text(
                             text = reportHistory.date,
-                            style = Typography.titleSmall,
-                            color = barcolorlow
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-
                     }
 
-                }
-                val color = Color(android.graphics.Color.parseColor(reportHistory.color))
-                Box(
-                    modifier = Modifier
-                        .padding(5.dp)
-                        .size(90.dp, 50.dp)
-                        .background(
-                            color = color, shape = RoundedCornerShape(18.dp)
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = statusColor,
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = reportHistory.status,
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                Text(
+                    text = "آدرس:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Text(
+                    text = reportHistory.address,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = reportHistory.status,
-                        textAlign = TextAlign.Center,
-                        modifier = modifier
-                            .align(Alignment.Center),
-                        color = Color.White,
-                        style = Typography.titleSmall,
+                        text = "جزئیات سفارش",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
-            HorizontalDivider(
-                color = barcolorlight,
-                thickness = 2.dp,
-                modifier = Modifier.padding(vertical = 9.dp)
-            )
-
-            Text(
-                modifier = modifier
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                text = "آدرس:",
-                textAlign = TextAlign.Center,
-                style = Typography.titleSmall,
-            )
-
-            Text(
-                modifier = modifier
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                text = reportHistory.address,
-                textAlign = TextAlign.Center,
-                style = Typography.titleSmall,
-            )
-            Row(
-                modifier = modifier
-                    .padding(horizontal = 4.dp, vertical = 4.dp)
-                    .fillMaxWidth()
-                    .clickable {
-                        onClick(reportHistory.cartCode)
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = "جزئیات سفارش",
-                    textAlign = TextAlign.Center,
-                    style = Typography.labelSmall,
-                    color = barcolorlow
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowBackIosNew,
-                    contentDescription = "ArrowBack",
-                    modifier = modifier
-                        .size(20.dp, 20.dp)
-                )
-            }
-
         }
     }
-
 }
 
-
-@Preview
-@PreviewScreenSizes
-@Composable
-private fun OrderStatusReportPreview() {
-    EShopTheme {
-        Column(modifier = Modifier.fillMaxSize()) {
-            OrderStatusReport(
-                reportHistory =
-                ReportHistoryCustomerModel(
-                    id = "1",
-                    customerCode = "C001",
-                    customerName = "John Doe",
-                    date = "2024-06-09",
-                    address = "123 Main St",
-                    status = "Delivered",
-                    color = "#FF6347",
-                    cartCode = 1001
-                ),
-                onClick = {}
-            )
-        }
-
+private fun parseStatusColor(
+    rawColor: String,
+    fallback: Color
+): Color {
+    return runCatching {
+        Color(android.graphics.Color.parseColor(rawColor))
+    }.getOrElse {
+        fallback
     }
-
 }

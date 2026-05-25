@@ -13,15 +13,23 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
+    /*
+     * اگر جایی Context بدون qualifier inject شده باشد، این provider کمک می‌کند.
+     * در کدهای جدیدتر بهتر است مستقیم @ApplicationContext استفاده شود.
+     */
     @Provides
     @Singleton
-    fun provideContext(@ApplicationContext context: Context): Context {
+    fun provideApplicationContext(
+        @ApplicationContext context: Context
+    ): Context {
         return context
     }
 
     @Provides
     @Singleton
-    fun providePiLocationManager(@ApplicationContext context: Context): PiLocationManager {
+    fun providePiLocationManager(
+        @ApplicationContext context: Context
+    ): PiLocationManager {
         return PiLocationManager(context)
     }
 }

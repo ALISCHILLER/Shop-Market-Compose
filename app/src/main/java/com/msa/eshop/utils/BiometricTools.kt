@@ -21,11 +21,11 @@ class BiometricTools @Inject constructor(
         onAuthenticationFailed: () -> Unit = {},
         onAuthenticationSucceeded: () -> Unit
     ) {
-        val availabilityMessage = checkBiometricAvailability()
+        val availabilityError = getBiometricAvailabilityError()
 
-        if (availabilityMessage != null) {
-            Timber.tag(TAG).e("Biometric unavailable | reason=$availabilityMessage")
-            onAuthenticationError(availabilityMessage)
+        if (availabilityError != null) {
+            Timber.tag(TAG).e("Biometric unavailable | reason=$availabilityError")
+            onAuthenticationError(availabilityError)
             return
         }
 
@@ -42,9 +42,9 @@ class BiometricTools @Inject constructor(
                 ) {
                     super.onAuthenticationError(errorCode, errString)
 
-                    val message = errString.toString().ifBlank {
-                        "احراز هویت بایومتریک انجام نشد"
-                    }
+                    val message = errorCode.toBiometricErrorMessage(
+                        fallback = errString.toString()
+                    )
 
                     Timber.tag(TAG).e(
                         "Biometric authentication error | code=$errorCode | message=$message"
@@ -71,16 +71,18 @@ class BiometricTools @Inject constructor(
             }
         )
 
-        authenticate(biometricPrompt)
+        biometricPrompt.authenticate(createPromptInfo())
     }
 
-    private fun checkBiometricAvailability(): String? {
+    fun isBiometricAvailable(): Boolean {
+        return getBiometricAvailabilityError() == null
+    }
+
+    private fun getBiometricAvailabilityError(): String? {
         val biometricManager = BiometricManager.from(context)
 
         return when (biometricManager.canAuthenticate(BIOMETRIC_STRONG)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> {
-                null
-            }
+            BiometricManager.BIOMETRIC_SUCCESS -> null
 
             BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> {
                 context.getString(R.string.ERROR_NO_HARDWARE)
@@ -112,17 +114,53 @@ class BiometricTools @Inject constructor(
         }
     }
 
-    private fun authenticate(
-        biometricPrompt: BiometricPrompt
-    ) {
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+    private fun createPromptInfo(): BiometricPrompt.PromptInfo {
+        return BiometricPrompt.PromptInfo.Builder()
             .setTitle("ورود با اثر انگشت")
             .setSubtitle("برای ورود سریع، اثر انگشت خود را تأیید کنید")
             .setNegativeButtonText("انصراف")
             .setAllowedAuthenticators(BIOMETRIC_STRONG)
             .build()
+    }
 
-        biometricPrompt.authenticate(promptInfo)
+    private fun Int.toBiometricErrorMessage(
+        fallback: String
+    ): String {
+        return when (this) {
+            BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+            BiometricPrompt.ERROR_USER_CANCELED,
+            BiometricPrompt.ERROR_CANCELED -> {
+                "احراز هویت لغو شد"
+            }
+
+            BiometricPrompt.ERROR_LOCKOUT -> {
+                "به دلیل تلاش‌های ناموفق، اثر انگشت موقتاً غیرفعال شد"
+            }
+
+            BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> {
+                "اثر انگشت به دلیل تلاش‌های ناموفق زیاد غیرفعال شده است"
+            }
+
+            BiometricPrompt.ERROR_TIMEOUT -> {
+                "زمان احراز هویت اثر انگشت تمام شد"
+            }
+
+            BiometricPrompt.ERROR_NO_BIOMETRICS -> {
+                context.getString(R.string.ERROR_NONE_ENROLLED)
+            }
+
+            BiometricPrompt.ERROR_HW_UNAVAILABLE -> {
+                "سنسور اثر انگشت در حال حاضر در دسترس نیست"
+            }
+
+            BiometricPrompt.ERROR_NO_DEVICE_CREDENTIAL -> {
+                "قفل صفحه یا اثر انگشت روی دستگاه فعال نیست"
+            }
+
+            else -> {
+                fallback.ifBlank { "احراز هویت بایومتریک انجام نشد" }
+            }
+        }
     }
 
     companion object {

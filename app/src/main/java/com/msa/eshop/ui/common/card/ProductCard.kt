@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.msa.eshop.ui.common.card
 
@@ -32,7 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,11 +62,11 @@ fun ProductCard(
     onDiscountClick: (ProductModelEntity) -> Unit,
     onClick: (ProductModelEntity) -> Unit
 ) {
-    var showAddSheet by remember(product.id) {
+    var showAddSheet by rememberSaveable(product.id) {
         mutableStateOf(false)
     }
 
-    var showDiscountSheet by remember(product.id) {
+    var showDiscountSheet by rememberSaveable(product.id) {
         mutableStateOf(false)
     }
 
@@ -107,8 +107,9 @@ fun ProductCard(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Card(
             modifier = modifier
+                .fillMaxWidth()
                 .clickable { onClick(product) },
-            shape = RoundedCornerShape(22.dp),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             ),
@@ -137,36 +138,15 @@ fun ProductCard(
                     )
 
                     if (product.isDiscounts) {
-                        Surface(
+                        DiscountBadge(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .clickable {
-                                    onDiscountClick(product)
-                                    showDiscountSheet = true
-                                },
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Image(
-                                    modifier = Modifier.size(20.dp),
-                                    painter = painterResource(id = R.drawable.ic_discount),
-                                    contentDescription = "تخفیف"
-                                )
-
-                                Spacer(modifier = Modifier.width(4.dp))
-
-                                Text(
-                                    text = "تخفیف",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                .padding(8.dp),
+                            onClick = {
+                                onDiscountClick(product)
+                                showDiscountSheet = true
                             }
-                        }
+                        )
                     }
                 }
 
@@ -179,30 +159,15 @@ fun ProductCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = Currency(product.price).toFormattedString(),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    Text(
-                        text = "ریال",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                PriceRow(price = product.price)
 
                 if (order != null) {
                     Text(
                         text = "در سبد: ${order.numberOrder} ${order.unitOrder.orEmpty()}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -232,5 +197,60 @@ fun ProductCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DiscountBadge(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                modifier = Modifier.size(20.dp),
+                painter = painterResource(id = R.drawable.ic_discount),
+                contentDescription = null
+            )
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Text(
+                text = "تخفیف",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+    }
+}
+
+@Composable
+private fun PriceRow(
+    price: Int
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = Currency(price).toFormattedString(),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Text(
+            text = "ریال",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

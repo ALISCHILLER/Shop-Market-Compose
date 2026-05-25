@@ -5,27 +5,25 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.msa.eshop.ui.component.dialog.ErrorDialog
 import com.msa.eshop.ui.component.dialog.InfoDialog
 import com.msa.eshop.ui.component.lottiefile.LoadingAnimate
@@ -34,75 +32,97 @@ import com.msa.eshop.ui.component.weightC.RoundedIconTextField
 @Composable
 fun ProfileRestPasswordScreen(
     modifier: Modifier = Modifier,
+    viewModel: RestPasswordViewModel = hiltViewModel()
 ) {
+    val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
 
-    val viewModel: RestPasswordViewModel = hiltViewModel()
-    val state by viewModel.state.collectAsState()
-    var password by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var repeatNewPassword by remember { mutableStateOf("") }
-
-    state.error?.let {
-        ErrorDialog(it, {viewModel.clearState()}, false)
-    }
-    state.message?.let {
-        InfoDialog(it, {viewModel.clearState()}, false)
+    uiState.errorMessage?.let { error ->
+        ErrorDialog(
+            error,
+            { viewModel.clearState() },
+            false
+        )
     }
 
-    Box {
-        Column(
-            modifier = Modifier
-                .width(328.dp)
-                .height(490.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color.White),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceAround
-        ) {
-            RoundedIconTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = "رمزعبور فعلی",
-                icon = Icons.Default.Lock,
-                isPassword = true,
-                modifier = Modifier.padding(6.dp)
-            )
-            RoundedIconTextField(
-                value = newPassword,
-                onValueChange = { newPassword = it },
-                label = "رمزعبورجدید",
-                icon = Icons.Default.Lock,
-                isPassword = true,
-                modifier = Modifier.padding(6.dp)
-            )
-            RoundedIconTextField(
-                value = repeatNewPassword,
-                onValueChange = { repeatNewPassword = it },
-                label = "تکراررمزعبور",
-                icon = Icons.Default.Lock,
-                isPassword = true,
-                modifier = Modifier.padding(6.dp)
-            )
-            Button(
-                onClick = {
-                    viewModel.restPasswordRequest(
-                        password = password,
-                        newPassword = newPassword,
-                        repeatNewPassword = repeatNewPassword
-                    )
-                },
+    uiState.message?.let { message ->
+        InfoDialog(
+            message,
+            { viewModel.clearState() },
+            false
+        )
+    }
+
+    Box(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+            Card(
                 modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-            )
-            {
-                Text("ثبت ")
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = MaterialTheme.shapes.extraLarge,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .imePadding()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = "تغییر رمز عبور",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    RoundedIconTextField(
+                        value = uiState.currentPassword,
+                        onValueChange = viewModel::onCurrentPasswordChange,
+                        label = "رمز عبور فعلی",
+                        icon = Icons.Default.Lock,
+                        isPassword = true
+                    )
+
+                    RoundedIconTextField(
+                        value = uiState.newPassword,
+                        onValueChange = viewModel::onNewPasswordChange,
+                        label = "رمز عبور جدید",
+                        icon = Icons.Default.Lock,
+                        isPassword = true
+                    )
+
+                    RoundedIconTextField(
+                        value = uiState.repeatNewPassword,
+                        onValueChange = viewModel::onRepeatNewPasswordChange,
+                        label = "تکرار رمز عبور جدید",
+                        icon = Icons.Default.Lock,
+                        isPassword = true
+                    )
+
+                    Button(
+                        onClick = viewModel::submit,
+                        enabled = uiState.canSubmit,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = "ثبت تغییرات",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
             }
         }
-        if (state.isLoading) {
+
+        if (uiState.isLoading) {
             LoadingAnimate()
-            // Blurred background
         }
     }
 }

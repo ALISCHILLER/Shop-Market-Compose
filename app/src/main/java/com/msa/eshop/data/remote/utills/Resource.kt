@@ -8,6 +8,22 @@ data class Resource<out T>(
     val error: MsaError? = null,
     val errorBody: ResponseBody? = null
 ) {
+    val isSuccess: Boolean
+        get() = status == Status.SUCCESS
+
+    val isLoading: Boolean
+        get() = status == Status.LOADING
+
+    val isError: Boolean
+        get() = status == Status.ERROR
+
+    val message: String?
+        get() = error?.message
+
+    fun dataOrThrow(): T {
+        return data ?: throw IllegalStateException(error?.safeMessage ?: "Response data is null")
+    }
+
     companion object {
         fun <T> success(data: T): Resource<T> {
             return Resource(

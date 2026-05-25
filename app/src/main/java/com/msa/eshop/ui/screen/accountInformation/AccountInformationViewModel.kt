@@ -1,39 +1,53 @@
 package com.msa.eshop.ui.screen.accountInformation
 
-import android.content.ContentValues.TAG
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.msa.eshop.data.local.entity.ProductGroupEntity
 import com.msa.eshop.data.local.entity.UserModelEntity
-import com.msa.eshop.data.repository.HomeRepository
 import com.msa.eshop.data.repository.ProfileRepository
-import com.msa.eshop.ui.navigation.NavManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import javax.inject.Inject
 
+data class AccountInformationUiState(
+    val user: UserModelEntity? = null,
+    val isLoading: Boolean = true
+)
 
 @HiltViewModel
 class AccountInformationViewModel @Inject constructor(
-    private val navManager: NavManager,
     private val profileRepository: ProfileRepository
-):ViewModel(){
-    private val _user = MutableStateFlow<UserModelEntity?>(null)
-    val user: MutableStateFlow<UserModelEntity?> = _user
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(AccountInformationUiState())
+    val uiState: StateFlow<AccountInformationUiState> = _uiState.asStateFlow()
+
+    private var userJob: Job? = null
 
     init {
-        getUser()
+        observeUser()
     }
-    private fun getUser() {
-        viewModelScope.launch {
-            profileRepository.getUser.collect {
-                Timber.tag(TAG).e("getUser: %s", it)
-                _user.value = it
+
+    private fun observeUser() {
+        if (userJob != null) return
+
+        userJob = viewModelScope.launch {
+            profileRepository.getUser.collect { user ->
+                Timber.tag(TAG).d("User loaded: $user")
+
+                _uiState.value = AccountInformationUiState(
+                    user = user,
+                    isLoading = false
+                )
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "AccountInfoVM"
     }
 }

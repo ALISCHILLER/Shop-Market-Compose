@@ -1,6 +1,7 @@
 package com.msa.eshop.ui.common.card
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,212 +16,167 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.msa.eshop.R
 import com.msa.eshop.data.Model.response.SimulateModel
-import com.msa.eshop.ui.theme.PlatinumSilver
-import com.msa.eshop.ui.theme.Typography
-import com.msa.eshop.ui.theme.*
 import com.msa.eshop.utils.Currency
-
-@Preview
-@Composable
-private fun preview() {
-    val simulateModel1 = SimulateModel(
-        convertFactor1 = 10,
-        convertFactor2 = 20,
-        discountPercent = 5,
-        discount_Percent_PaymentTerm_Receipt = 3,
-        discount_Percent_PaymentTerm_Receipt_Tax = 2,
-        discount_Percent_PaymentTerm_cheque = 4,
-        discount_Percent_PaymentTerm_cheque_Tax = 1,
-        discount_Percent_PaymentTerm_immediate = 6,
-        discount_Percent_PaymentTerm_immediate_Tax = 2,
-        finalPrice = 1000,
-        finalPriceDiscount = 950,
-        fullNameKala1 = "عدد",
-        fullNameKala2 = "Product Full Name 2",
-        id = "1",
-        isTax = true,
-        paymentTermId = "123",
-        price = 1100,
-        priceByDiscountPercent = 1050,
-        priceByDiscountPercentAndTax = 1075,
-        priceByDiscountPercentAndTax_Receipt = 1030,
-        priceByDiscountPercentAndTax_cheque = 1045,
-        priceByDiscountPercentAndTax_immediate = 1025,
-        priceDiscount = 50,
-        productCode = 1001,
-        productGroupCode = 2001,
-        productImage = "http://example.com/product1.jpg",
-        productName = "Product 1",
-        quantity = 10,
-        unit1 = "Piece",
-        unit2 = "Box",
-        unitid1 = "U001",
-        unitid2 = "U002"
-    )
-    SimulateCard(simulate = simulateModel1)
-}
 
 @Composable
 fun SimulateCard(
     modifier: Modifier = Modifier,
     simulate: SimulateModel
 ) {
-
-
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(10.dp, RoundedCornerShape(18.dp))
-                .padding(8.dp),
+            modifier = modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
             Column(
-                modifier = modifier
-                    .background(Color.White)
-                    .padding(horizontal = 15.dp, vertical = 5.dp)
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
                 Row(
-                    modifier = modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-
                     Box(
                         modifier = Modifier
-                            .padding(5.dp)
-                            .size(90.dp, 60.dp)
+                            .size(width = 90.dp, height = 68.dp)
                             .background(
-                                color = PlatinumSilver, shape = RoundedCornerShape(18.dp)
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(18.dp)
                             )
                             .aspectRatio(1f)
                     ) {
-
                         AsyncImage(
                             model = simulate.productImage,
-                            contentDescription = "productImage",
+                            contentDescription = simulate.productName,
                             modifier = Modifier.fillMaxSize(),
-                            error = painterResource(id = R.drawable.not_load_image)
+                            contentScale = ContentScale.Fit,
+                            error = painterResource(id = R.drawable.not_load_image),
+                            placeholder = painterResource(id = R.drawable.not_load_image)
                         )
-//                        Image(
-//                            painter = painterResource(id = R.drawable.product),
-//                            contentDescription = "product",
-//                            modifier = Modifier.fillMaxSize(),
-//                        )
                     }
 
                     Column(
-                        modifier = modifier
-                            .background(Color.White)
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-
                         Text(
-                            modifier = Modifier
-                                .padding(8.dp),
                             text = simulate.productName,
-                            style = Typography.titleSmall
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
 
                         Row(
-                            modifier = Modifier
-                                .padding(2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Spacer(modifier = Modifier.padding(5.dp))
                             Text(
                                 text = "فی:",
-                                style = Typography.titleSmall
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(modifier = Modifier.padding(2.dp))
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
                             Text(
                                 text = Currency(simulate.price).toFormattedString(),
-                                style = Typography.titleSmall,
-                                color = barcolorlight2
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(modifier = Modifier.padding(2.dp))
+
+                            Spacer(modifier = Modifier.width(4.dp))
+
                             Text(
-                                text = "ریال ",
-                                style = Typography.titleSmall,
-                                color = barcolorlight2
+                                text = "ریال",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-
                     }
                 }
-                Column(
-                    modifier = modifier
-                        .padding(5.dp)
-                        .background(Color.White)
-                ) {
 
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-                    RowText(
-                        title = "تعداد سفارش",
-                        message = "${simulate.quantity} ${simulate.fullNameKala1}"
-                    )
+                SimulateInfoRow(
+                    title = "تعداد سفارش",
+                    value = "${simulate.quantity} ${simulate.fullNameKala1}"
+                )
 
-                    RowText(
-                        title = "تخفیفات",
-                        message = Currency(simulate.discount_Percent_PaymentTerm_immediate).toFormattedString()
-                    )
+                SimulateInfoRow(
+                    title = "تخفیفات",
+                    value = "${Currency(simulate.discount_Percent_PaymentTerm_immediate).toFormattedString()} ریال"
+                )
 
-                    RowText(
-                        title = "مالیات",
-                        message = Currency(simulate.discount_Percent_PaymentTerm_immediate_Tax).toFormattedString()
-                    )
-                    HorizontalDivider( color = barcolorlight, thickness = 2.dp)
+                SimulateInfoRow(
+                    title = "مالیات",
+                    value = "${Currency(simulate.discount_Percent_PaymentTerm_immediate_Tax).toFormattedString()} ریال"
+                )
 
-                    RowText(
-                        title = "مبلغ قابل پرداخت",
-                        message = Currency(simulate.priceByDiscountPercentAndTax_immediate).toFormattedString()
-                    )
-                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                SimulateInfoRow(
+                    title = "مبلغ قابل پرداخت",
+                    value = "${Currency(simulate.priceByDiscountPercentAndTax_immediate).toFormattedString()} ریال",
+                    highlight = true
+                )
             }
         }
     }
-
 }
 
-
 @Composable
-fun RowText(
-    modifier: Modifier = Modifier,
+private fun SimulateInfoRow(
     title: String,
-    message: String
+    value: String,
+    highlight: Boolean = false
 ) {
     Row(
-        modifier = modifier.padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    )
-    {
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         Text(
-            text = "${title} :",
-            style = Typography.titleSmall
+            text = "$title:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = modifier.width(8.dp))
+
+        Spacer(modifier = Modifier.width(12.dp))
+
         Text(
-            text = message,
-            style = Typography.titleSmall,
-            color = barcolorlight2
+            text = value,
+            style = if (highlight) {
+                MaterialTheme.typography.titleMedium
+            } else {
+                MaterialTheme.typography.bodyMedium
+            },
+            color = if (highlight) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

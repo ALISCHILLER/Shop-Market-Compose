@@ -8,18 +8,45 @@ fun calculateTotalValue(
     value2: Int,
     convertFactor2: Int
 ): Int {
-    val safeValue1 = value1.coerceAtLeast(0)
-    val safeValue2 = value2.coerceAtLeast(0)
-    val safeConvertFactor2 = convertFactor2.coerceAtLeast(0)
+    val total = calculateTotalValueLong(
+        value1 = value1,
+        value2 = value2,
+        convertFactor2 = convertFactor2
+    )
 
-    return (safeValue2 * safeConvertFactor2 + safeValue1).coerceAtLeast(0)
+    return total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+}
+
+fun calculateTotalValueLong(
+    value1: Int,
+    value2: Int,
+    convertFactor2: Int
+): Long {
+    val safeValue1 = value1.coerceAtLeast(0).toLong()
+    val safeValue2 = value2.coerceAtLeast(0).toLong()
+    val safeConvertFactor2 = convertFactor2.coerceAtLeast(0).toLong()
+
+    return (safeValue2 * safeConvertFactor2 + safeValue1).coerceAtLeast(0L)
 }
 
 fun calculateSalePrice(
     totalValue: Int,
     price: Int
 ): Float {
-    return totalValue.coerceAtLeast(0) * price.coerceAtLeast(0).toFloat()
+    return calculateSalePriceLong(
+        totalValue = totalValue,
+        price = price
+    ).toFloat()
+}
+
+fun calculateSalePriceLong(
+    totalValue: Int,
+    price: Int
+): Long {
+    val safeTotalValue = totalValue.coerceAtLeast(0).toLong()
+    val safePrice = price.coerceAtLeast(0).toLong()
+
+    return (safeTotalValue * safePrice).coerceAtLeast(0L)
 }
 
 fun createOrderEntity(
@@ -54,6 +81,13 @@ fun createOrderEntity(
 
 fun OrderEntity.totalPrice(): Float {
     return calculateSalePrice(
+        totalValue = numberOrder,
+        price = price
+    )
+}
+
+fun OrderEntity.totalPriceLong(): Long {
+    return calculateSalePriceLong(
         totalValue = numberOrder,
         price = price
     )

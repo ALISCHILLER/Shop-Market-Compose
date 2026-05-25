@@ -38,7 +38,7 @@ fun ProductGroupCard(
     val contentColor = if (isSelected) {
         MaterialTheme.colorScheme.onPrimary
     } else {
-        MaterialTheme.colorScheme.primary
+        MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val iconUrl = if (isSelected) {
@@ -52,16 +52,17 @@ fun ProductGroupCard(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Column(
             modifier = Modifier
-                .width(76.dp)
+                .width(78.dp)
                 .clickable { onClick(productGroupEntity) },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Surface(
                 shape = CircleShape,
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(58.dp),
                 color = backgroundColor,
-                tonalElevation = if (isSelected) 4.dp else 0.dp
+                tonalElevation = if (isSelected) 4.dp else 0.dp,
+                shadowElevation = if (isSelected) 3.dp else 0.dp
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -90,7 +91,11 @@ fun ProductGroupCard(
 
             Text(
                 text = productGroupEntity.productCategoryName ?: "",
-                color = contentColor,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 style = MaterialTheme.typography.labelSmall,
                 textAlign = TextAlign.Center,
                 maxLines = 1,

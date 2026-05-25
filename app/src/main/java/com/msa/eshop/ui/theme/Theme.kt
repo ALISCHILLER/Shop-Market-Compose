@@ -5,7 +5,9 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -13,6 +15,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
@@ -20,17 +23,33 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = EShopSurface,
     primaryContainer = EShopRedLight,
     onPrimaryContainer = EShopRedDark,
+
     secondary = EShopRedDark,
     onSecondary = EShopSurface,
+    secondaryContainer = EShopRedSoft,
+    onSecondaryContainer = EShopRedDarker,
+
+    tertiary = EShopInfo,
+    onTertiary = EShopSurface,
+    tertiaryContainer = EShopInfoLight,
+    onTertiaryContainer = EShopInfo,
+
     background = EShopBackground,
     onBackground = EShopTextPrimary,
+
     surface = EShopSurface,
     onSurface = EShopTextPrimary,
+
     surfaceVariant = EShopSurfaceVariant,
     onSurfaceVariant = EShopTextSecondary,
+
     outline = EShopBorder,
-    error = EShopRed,
-    onError = EShopSurface
+    outlineVariant = EShopSurfaceVariant,
+
+    error = EShopError,
+    onError = EShopSurface,
+    errorContainer = EShopErrorLight,
+    onErrorContainer = EShopRedDark
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -38,45 +57,72 @@ private val DarkColorScheme = darkColorScheme(
     onPrimary = EShopSurface,
     primaryContainer = EShopRedDark,
     onPrimaryContainer = EShopSurface,
+
     secondary = EShopRedLight,
-    background = ColorDark.Background,
-    onBackground = ColorDark.Text,
-    surface = ColorDark.Surface,
-    onSurface = ColorDark.Text,
-    surfaceVariant = ColorDark.SurfaceVariant,
-    onSurfaceVariant = ColorDark.TextSecondary,
-    outline = ColorDark.Border,
-    error = EShopRed,
-    onError = EShopSurface
+    onSecondary = EShopDarkBackground,
+    secondaryContainer = EShopRedDark,
+    onSecondaryContainer = EShopSurface,
+
+    tertiary = EShopInfoLight,
+    onTertiary = EShopDarkBackground,
+    tertiaryContainer = EShopInfo,
+    onTertiaryContainer = EShopSurface,
+
+    background = EShopDarkBackground,
+    onBackground = EShopDarkTextPrimary,
+
+    surface = EShopDarkSurface,
+    onSurface = EShopDarkTextPrimary,
+
+    surfaceVariant = EShopDarkSurfaceVariant,
+    onSurfaceVariant = EShopDarkTextSecondary,
+
+    outline = EShopDarkBorder,
+    outlineVariant = EShopDarkSurfaceVariant,
+
+    error = EShopRedSoft,
+    onError = EShopDarkBackground,
+    errorContainer = EShopRedDark,
+    onErrorContainer = EShopSurface
 )
 
-private object ColorDark {
-    val Background = androidx.compose.ui.graphics.Color(0xFF111113)
-    val Surface = androidx.compose.ui.graphics.Color(0xFF1B1B1F)
-    val SurfaceVariant = androidx.compose.ui.graphics.Color(0xFF242429)
-    val Text = androidx.compose.ui.graphics.Color(0xFFF5F5F7)
-    val TextSecondary = androidx.compose.ui.graphics.Color(0xFFB7B7C0)
-    val Border = androidx.compose.ui.graphics.Color(0xFF34343A)
-}
+val EShopShapes = Shapes(
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+    extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+)
 
 @Composable
 fun EShopTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
 
     val colorScheme: ColorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> dynamicLightColorScheme(context)
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && darkTheme -> {
+            dynamicDarkColorScheme(context)
+        }
+
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            dynamicLightColorScheme(context)
+        }
+
         darkTheme -> DarkColorScheme
+
         else -> LightColorScheme
     }
 
     val view = LocalView.current
+
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            val activity = view.context as? Activity ?: return@SideEffect
+            val window = activity.window
+
             window.statusBarColor = colorScheme.surface.toArgb()
             window.navigationBarColor = colorScheme.surface.toArgb()
 
@@ -90,6 +136,7 @@ fun EShopTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = EShopShapes,
         content = content
     )
 }

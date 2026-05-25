@@ -1,40 +1,36 @@
 package com.msa.eshop.ui.common.card
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.msa.eshop.R
 import com.msa.eshop.data.Model.response.ReportCartDetailsModel
-import com.msa.eshop.ui.theme.PlatinumSilver
-import com.msa.eshop.ui.theme.RedMain
-import com.msa.eshop.ui.theme.Typography
-import com.msa.eshop.ui.theme.barcolorlight
 import com.msa.eshop.utils.Currency
 
 @Composable
@@ -42,126 +38,132 @@ fun OrderDetailsReportCard(
     modifier: Modifier = Modifier,
     reportCart: ReportCartDetailsModel
 ) {
-
-
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Card(
-            modifier = Modifier
-                .padding(horizontal = 3.dp, vertical = 3.dp)
-                .fillMaxWidth()
-                .shadow(10.dp, RoundedCornerShape(18.dp))
-                ,
+            modifier = modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Row(
-                    modifier = modifier
-                        .padding(horizontal = 3.dp, vertical = 3.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .padding(5.dp)
-                            .size(70.dp, 70.dp)
+                            .size(76.dp)
                             .background(
-                                color = PlatinumSilver, shape = RoundedCornerShape(18.dp)
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = RoundedCornerShape(18.dp)
                             )
                             .aspectRatio(1f)
                     ) {
                         AsyncImage(
                             model = reportCart.productImageUrl,
-                            contentDescription = "productImage",
+                            contentDescription = reportCart.productName,
                             modifier = Modifier.fillMaxSize(),
-                            error = painterResource(id = R.drawable.not_load_image)
+                            contentScale = ContentScale.Fit,
+                            error = painterResource(id = R.drawable.not_load_image),
+                            placeholder = painterResource(id = R.drawable.not_load_image)
                         )
                     }
-                    Text(
-                        text = reportCart.productName,
-                        textAlign = TextAlign.Center,
-                        style = Typography.titleSmall,
-                    )
 
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = reportCart.productName,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Text(
+                            text = "کد کالا: ${reportCart.productCode}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                Row(
-                    modifier = modifier
-                        .padding(horizontal = 5.dp, vertical = 4.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "تعداد سفارش",
-                        textAlign = TextAlign.Center,
-                        style = Typography.titleSmall,
-                    )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
 
-                    Text(
-                        text = reportCart.quantity.toString(),
-                        textAlign = TextAlign.Center,
-                        style = Typography.titleSmall,
-                    )
-                }
-
-                HorizontalDivider(
-                    color = barcolorlight,
-                    thickness = 2.dp,
-                    modifier = Modifier.padding(vertical = 9.dp)
+                DetailRow(
+                    title = "تعداد سفارش",
+                    value = reportCart.quantity.toString()
                 )
-                Row(
-                    modifier = modifier
-                        .padding(horizontal = 6.dp, vertical = 5.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "جمع کل: ",
-                        textAlign = TextAlign.Center,
-                        style = Typography.titleSmall,
+
+                DetailRow(
+                    title = "قیمت واحد",
+                    value = "${Currency(reportCart.price).toFormattedString()} ریال"
+                )
+
+                if (reportCart.discount > 0) {
+                    DetailRow(
+                        title = "تخفیف",
+                        value = "${Currency(reportCart.discount).toFormattedString()} ریال"
                     )
-
-                    Row {
-                        Text(
-                            text = Currency(reportCart.total).toFormattedString(),
-                            textAlign = TextAlign.Center,
-                            style = Typography.titleSmall,
-                            color = RedMain
-                        )
-                        Text(
-                            text = " تومان",
-                            textAlign = TextAlign.Center,
-                            style = Typography.titleSmall,
-                            color = RedMain
-                        )
-                    }
-
                 }
+
+                if (reportCart.tax > 0) {
+                    DetailRow(
+                        title = "مالیات",
+                        value = "${Currency(reportCart.tax).toFormattedString()} ریال"
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
+                DetailRow(
+                    title = "جمع کل",
+                    value = "${Currency(reportCart.total).toFormattedString()} ریال",
+                    highlight = true
+                )
             }
+        }
     }
 }
 
-@Preview
 @Composable
-private fun preview() {
-    OrderDetailsReportCard(
-        reportCart = ReportCartDetailsModel(
-            cartCode = 101,
-            customerAddress = "123 Main St, City, Country",
-            customerName = "John Doe",
-            discount = 10,
-            id = "1",
-            price = 100,
-            productCode = "P001",
-            productImageUrl = "http://example.com/image1.jpg",
-            productName = "Product 1",
-            quantity = 2,
-            salesDate = "2023-06-01",
-            statusName = "Delivered",
-            tax = 5,
-            total = 15200
+private fun DetailRow(
+    title: String,
+    value: String,
+    highlight: Boolean = false
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Text(
+            text = value,
+            style = if (highlight) {
+                MaterialTheme.typography.titleMedium
+            } else {
+                MaterialTheme.typography.bodyMedium
+            },
+            color = if (highlight) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    }
 }

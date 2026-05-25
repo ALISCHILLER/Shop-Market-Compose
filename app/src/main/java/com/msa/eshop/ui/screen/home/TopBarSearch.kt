@@ -39,15 +39,23 @@ fun TopBarSearch(
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .fillMaxWidth()
-                .heightIn(min = 112.dp)
-                .padding(top = 10.dp, bottom = 10.dp),
+                .heightIn(min = 108.dp)
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 10.dp,
+                    bottom = 10.dp
+                ),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "لوگو",
-                modifier = Modifier.size(width = 132.dp, height = 44.dp)
+                modifier = Modifier.size(
+                    width = 128.dp,
+                    height = 42.dp
+                )
             )
 
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {

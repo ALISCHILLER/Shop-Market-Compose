@@ -52,7 +52,9 @@ class MainActivity : FragmentActivity() {
         piLocationManager.setActivity(this)
 
         setContent {
-            EShopTheme {
+            EShopTheme(
+                darkTheme = false
+            ) {
                 SetupNavigator()
             }
         }

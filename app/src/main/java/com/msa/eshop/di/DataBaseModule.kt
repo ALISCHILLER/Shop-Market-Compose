@@ -2,6 +2,7 @@ package com.msa.eshop.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
 import com.msa.eshop.data.local.AppDatabase
 import com.msa.eshop.data.local.dao.OrderAddressDao
 import com.msa.eshop.data.local.dao.OrderDao
@@ -27,17 +28,25 @@ object DataBaseModule {
         @ApplicationContext context: Context
     ): AppDatabase {
         return Room.databaseBuilder(
-            context,
+            context.applicationContext,
             AppDatabase::class.java,
             CompanionValues.DATABASE_NAME
         )
-            .allowMainThreadQueries()
+            /*
+             * بهتر برای performance و همزمانی read/write.
+             */
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+
+            /*
+             * عمداً fallbackToDestructiveMigration نگذاشتم.
+             * برای production بهتر است Migration واقعی بنویسی، نه پاک کردن دیتابیس کاربر.
+             */
             .build()
     }
 
     @Provides
     @Singleton
-    fun providerUserDao(
+    fun provideUserDao(
         appDatabase: AppDatabase
     ): UserDao {
         return appDatabase.userDao()
@@ -45,7 +54,7 @@ object DataBaseModule {
 
     @Provides
     @Singleton
-    fun providerProductDao(
+    fun provideProductDao(
         appDatabase: AppDatabase
     ): ProductDao {
         return appDatabase.productDao()
@@ -53,7 +62,7 @@ object DataBaseModule {
 
     @Provides
     @Singleton
-    fun providerProductGroupDao(
+    fun provideProductGroupDao(
         appDatabase: AppDatabase
     ): ProductGroupDao {
         return appDatabase.productGroupDao()
@@ -61,7 +70,7 @@ object DataBaseModule {
 
     @Provides
     @Singleton
-    fun providerOrderDao(
+    fun provideOrderDao(
         appDatabase: AppDatabase
     ): OrderDao {
         return appDatabase.orderDao()
@@ -69,7 +78,7 @@ object DataBaseModule {
 
     @Provides
     @Singleton
-    fun providerPaymentMethodDao(
+    fun providePaymentMethodDao(
         appDatabase: AppDatabase
     ): PaymentMethodDao {
         return appDatabase.paymentMethodDao()
@@ -77,7 +86,7 @@ object DataBaseModule {
 
     @Provides
     @Singleton
-    fun providerOrderAddressDao(
+    fun provideOrderAddressDao(
         appDatabase: AppDatabase
     ): OrderAddressDao {
         return appDatabase.orderAddressDao()
