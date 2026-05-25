@@ -2,33 +2,40 @@ package com.msa.eshop.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val EShopRed = Color(0xFFEB091E)
+val EShopRedDark = Color(0xFFB9081F)
+val EShopRedLight = Color(0xFFFFEEF0)
+
+val EShopBackground = Color(0xFFF8F8F8)
+val EShopSurface = Color(0xFFFFFFFF)
+val EShopSurfaceVariant = Color(0xFFF2F2F3)
+
+val EShopTextPrimary = Color(0xFF1F1F1F)
+val EShopTextSecondary = Color(0xFF6E6E73)
+val EShopBorder = Color(0xFFE2E2E2)
+val EShopSuccess = Color(0xFF1BAA5C)
+val EShopWarning = Color(0xFFFFAB00)
+
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
+val Purple40 = EShopRed
+val PurpleGrey40 = Color(0xFF625B71)
 val Pink40 = Color(0xFF7D5260)
 
+val GrayBorderStroke = EShopBorder
+val PlatinumSilver = EShopBackground
 
-val GrayBorderStroke = Color(0xFFE2E2E2)
-
-val PlatinumSilver = Color(0xFFF8F8F8)
-
-val barcolor = Color(0xffbfbfc0)
-val barcolorDark = Color(0xFF2E2E2E)
-val barcolorlow = Color(0xFF525252)
-val barcolorlight = Color(0xFFEEEEEE)
-val barcolorlight2 = Color(0xFF8D8D8D)
-val lightcoral = Color(0xfff3b8bb)
+val barcolor = Color(0xFFBFBFC0)
+val barcolorDark = EShopTextPrimary
+val barcolorlow = EShopTextSecondary
+val barcolorlight = EShopSurfaceVariant
+val barcolorlight2 = EShopTextSecondary
+val lightcoral = Color(0xFFF3B8BB)
 
 val LightPurple = Color(0xFFBCA1E7)
-val RoyalPurple = Color(0xEB700C24)
-val RedMain = Color(0xFFEB091E)
-val RoyalRed = Color(0xFFEB091E)
-
-
-
-val OrangeStatus = Color(0xFFFFAB00)
-
-
+val RoyalPurple = EShopRedDark
+val RedMain = EShopRed
+val RoyalRed = EShopRed
+val OrangeStatus = EShopWarning

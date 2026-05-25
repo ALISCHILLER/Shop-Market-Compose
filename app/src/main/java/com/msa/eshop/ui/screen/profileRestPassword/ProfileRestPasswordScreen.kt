@@ -26,9 +26,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.msa.componentcompose.ui.component.lottiefile.LoadingAnimate
 import com.msa.eshop.ui.component.dialog.ErrorDialog
 import com.msa.eshop.ui.component.dialog.InfoDialog
+import com.msa.eshop.ui.component.lottiefile.LoadingAnimate
 import com.msa.eshop.ui.component.weightC.RoundedIconTextField
 
 @Composable

@@ -1,9 +1,5 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
-
 package com.msa.eshop.ui.acticity
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -11,82 +7,75 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.fragment.app.FragmentActivity
 import com.msa.eshop.ui.navigation.NavManager
 import com.msa.eshop.ui.navigation.SetupNavigator
 import com.msa.eshop.ui.theme.EShopTheme
 import com.msa.eshop.utils.map.location.PiLocationManager
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.Locale
 import javax.inject.Inject
 
-@ExperimentalFoundationApi
+@OptIn(ExperimentalFoundationApi::class)
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+
     @Inject
     lateinit var navManager: NavManager
+
     @Inject
     lateinit var piLocationManager: PiLocationManager
-    var speechInput = mutableStateOf("")
+
+    val speechInput = mutableStateOf("")
+
+    private val speechLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val spokenText = result.data
+            ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+            .orEmpty()
+
+        if (spokenText.isNotBlank()) {
+            speechInput.value = spokenText
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         piLocationManager.setActivity(this)
+
         setContent {
             EShopTheme {
-                    SetupNavigator()
-                }
-
+                SetupNavigator()
+            }
         }
     }
-
 
     fun askSpeechInput(context: Context) {
-        val language = "fa-IR"
+        val language = Locale("fa", "IR").toLanguageTag()
+
         if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-            Toast.makeText(context, "Speech not Available", Toast.LENGTH_SHORT).show()
-        } else {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, language)
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
-            intent.putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, language)
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
-            intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Talk")
-            startActivityForResult(intent, 102)
+            Toast.makeText(context, "تشخیص گفتار در این دستگاه فعال نیست", Toast.LENGTH_SHORT).show()
+            return
         }
-    }
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == 102 && resultCode == Activity.RESULT_OK) {
-            val result = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            speechInput.value = result?.get(0).toString()
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "نام کالا را بگویید")
         }
-    }
 
-    // Override onBackPressed to handle back button press
-//    override fun onBackPressed() {
-//        super.onBackPressed()
-//        // Custom logic for handling back button press
-//        // For example, you can navigate back in your navigation stack
-//        // or perform other actions as needed
-//        navManager.navigate(NavInfo(id = Route.BACK.route))
-//    }
-
-}
-
-
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    EShopTheme {
-
+        speechLauncher.launch(intent)
     }
 }

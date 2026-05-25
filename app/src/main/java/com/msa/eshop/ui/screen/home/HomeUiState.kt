@@ -16,7 +16,14 @@ data class HomeUiState(
     val discounts: List<DiscountResultModel> = emptyList(),
     val selectedGroupCode: Int = ALL_PRODUCTS_GROUP_CODE,
     val searchQuery: String = "",
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val isDiscountLoading: Boolean = false,
     val errorMessage: String? = null
-)
+) {
+    val isInitialLoading: Boolean
+        get() = isLoading && products.isEmpty()
+
+    val shouldShowEmpty: Boolean
+        get() = !isLoading && products.isEmpty() && errorMessage == null
+}

@@ -1,35 +1,41 @@
-
-
 package com.msa.eshop.ui.navigation
 
 import android.os.Bundle
-import androidx.navigation.NavController
 import androidx.navigation.NavOptions
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 @Singleton
 class NavManager @Inject constructor() {
 
-    private val _routeInfo = MutableStateFlow(NavInfo())
-    val routeInfo: StateFlow<NavInfo> = _routeInfo
+    private val commandsChannel = Channel<NavInfo>(
+        capacity = Channel.BUFFERED
+    )
 
-    fun navigate(routeInfo: NavInfo?) {
-        //Clear previous error, when navigating
+    val commands = commandsChannel.receiveAsFlow()
 
-        _routeInfo.update { routeInfo ?: NavInfo() }
-
+    fun navigate(navInfo: NavInfo) {
+        commandsChannel.trySend(navInfo)
     }
 
+    fun navigate(route: String, navOptions: NavOptions? = null) {
+        navigate(
+            NavInfo(
+                id = route,
+                navOption = navOptions
+            )
+        )
+    }
 
+    fun back() {
+        navigate(Route.BACK.route)
+    }
 }
 
-
 data class NavInfo(
-    val id:String?=null,
-    val args: Bundle? = null, // اضافه کردن args برای پشتیبانی از Bundle
+    val id: String? = null,
+    val args: Bundle? = null,
     val navOption: NavOptions? = null
 )

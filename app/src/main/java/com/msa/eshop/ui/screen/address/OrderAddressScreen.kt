@@ -39,12 +39,12 @@ import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.msa.componentcompose.ui.component.lottiefile.LoadingAnimate
 import com.msa.eshop.R
 import com.msa.eshop.data.Model.response.OrderAddressModel
 import com.msa.eshop.ui.common.card.AddressCard
 import com.msa.eshop.ui.common.topBar.TopBarDetails
 import com.msa.eshop.ui.component.dialog.ErrorDialog
+import com.msa.eshop.ui.component.lottiefile.LoadingAnimate
 import com.msa.eshop.ui.theme.Typography
 import com.msa.eshop.ui.theme.barcolorlight2
 

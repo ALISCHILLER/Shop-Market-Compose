@@ -1,39 +1,45 @@
 package com.msa.eshop.ui.navigation
 
-import androidx.navigation.NamedNavArgument
-
-
 sealed class Route(
-    val route: String,
-    val arguments: List<NamedNavArgument> = emptyList()
+    val route: String
 ) {
 
-    object BACK : Route(route = "back")
+    data object BACK : Route(route = "back")
 
-    object SplashScreen : Route(route = "splashScreen")
+    data object SplashScreen : Route(route = "splashScreen")
 
     // Login
-    object LoginScreen : Route(route = "loginScreen")
-    object NewPasswordScreen : Route(route = "newPasswordScreen")
-    object NationalCodeResetPassScreen : Route(route = "nationalCodeResetPassScreen")
-    object OtpScreen : Route(route = "otpScreen")
+    data object LoginScreen : Route(route = "loginScreen")
+    data object NewPasswordScreen : Route(route = "newPasswordScreen")
+    data object NationalCodeResetPassScreen : Route(route = "nationalCodeResetPassScreen")
+    data object OtpScreen : Route(route = "otpScreen")
 
     // Home Product
-    object HomeScreen : Route(route = "homeScreen")
-    object DetailsProductScreen : Route(route = "detailsProductScreen")
+    data object HomeScreen : Route(route = "homeScreen")
+    data object DetailsProductScreen : Route(route = "detailsProductScreen")
 
     // Basket
-    object BasketScreen : Route(route = "BasketScreen")
-    object SimulateScreen : Route(route = "simulateScreen")
-    object OrderAddressScreen : Route(route = "OrderAddressScreen")
-    object PaymentMethodScreen : Route(route = "paymentMethodScreen")
+    data object BasketScreen : Route(route = "BasketScreen")
+    data object SimulateScreen : Route(route = "simulateScreen")
+    data object OrderAddressScreen : Route(route = "OrderAddressScreen")
+    data object PaymentMethodScreen : Route(route = "paymentMethodScreen")
 
     // Profile Customer
-    object ProfileScreen : Route(route = "profileScreen")
-    object AddressRegistrationScreen : Route(route = "addressRegistrationScreen")
-    object LocationRegistrationScreen : Route(route = "locationRegistrationScreen")
+    data object ProfileScreen : Route(route = "profileScreen")
+    data object AddressRegistrationScreen : Route(route = "addressRegistrationScreen")
+    data object LocationRegistrationScreen : Route(route = "locationRegistrationScreen")
 
     // Report
-    object OrderStatusReportScreen : Route(route = "orderStatusReportScreen")
-    object OrderDetailsReportScreen : Route(route = "orderDetailsReportScreen")
+    data object OrderStatusReportScreen : Route(route = "orderStatusReportScreen")
+
+    data object OrderDetailsReportScreen : Route(route = "orderDetailsReportScreen") {
+        const val ARG_CARD = "card"
+
+        val routeWithArgs: String
+            get() = "$route/{$ARG_CARD}"
+
+        fun createRoute(card: Int): String {
+            return "$route/$card"
+        }
+    }
 }

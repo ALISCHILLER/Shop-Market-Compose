@@ -1,164 +1,213 @@
-@file:OptIn(ExperimentalAnimationApi::class, ExperimentalAnimationApi::class)
+@file:OptIn(ExperimentalFoundationApi::class)
 
 package com.msa.eshop.ui.navigation
 
-import android.os.Bundle
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavOptionsBuilder
+import androidx.navigation.NavType
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.msa.eshop.ui.acticity.MainActivity
-import com.msa.eshop.ui.navigation.bottomNav.BottomNavNoAnimation
-import com.msa.eshop.ui.screen.basket.BasketScreen
-import com.msa.eshop.ui.screen.home.HomeScreen
-import com.msa.eshop.ui.screen.login.LoginScreen
-import com.msa.eshop.ui.screen.simulate.SimulateScreen
-import com.msa.eshop.ui.screen.splash.SplashScreen
-import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.msa.eshop.ui.acticity.MainActivity
+import com.msa.eshop.ui.acticity.MainViewModel
+import com.msa.eshop.ui.navigation.bottomNav.BottomNavNoAnimation
 import com.msa.eshop.ui.screen.address.OrderAddressScreen
 import com.msa.eshop.ui.screen.addressRegistration.AddressRegistrationScreen
 import com.msa.eshop.ui.screen.addressRegistration.LocationRegistrationScreen
+import com.msa.eshop.ui.screen.basket.BasketScreen
+import com.msa.eshop.ui.screen.home.HomeScreen
+import com.msa.eshop.ui.screen.login.LoginScreen
 import com.msa.eshop.ui.screen.orderDetailsReport.OrderDetailsReportScreen
 import com.msa.eshop.ui.screen.orderStatusReport.OrderStatusReportScreen
 import com.msa.eshop.ui.screen.paymentMethod.PaymentMethodScreen
 import com.msa.eshop.ui.screen.profile.ProfileScreen
+import com.msa.eshop.ui.screen.simulate.SimulateScreen
+import com.msa.eshop.ui.screen.splash.SplashScreen
+import com.msa.eshop.ui.theme.PlatinumSilver
 
-@ExperimentalFoundationApi
-@ExperimentalMaterial3Api
 @Composable
 fun MainActivity.SetupNavigator() {
     val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
 
+    val currentRoute = navController
+        .currentBackStackEntryAsState()
+        .value
+        ?.destination
+        ?.route
 
-    val navInfo by navManager.routeInfo.collectAsState()
-    LaunchedEffect(key1 = navInfo) {
-        navInfo.id?.let {
-            if (it == Route.BACK.route) {
-                navController.popBackStack()
-                navManager.navigate(null)
-                return@let
-            } else if (it == Route.LoginScreen.route) {
+    val showBottomBar = remember(currentRoute) {
+        shouldShowBottomBar(currentRoute)
+    }
 
+    LaunchedEffect(navController) {
+        navManager.commands.collect { navInfo ->
+            val route = navInfo.id ?: return@collect
+
+            when (route) {
+                Route.BACK.route -> {
+                    navController.popBackStack()
+                }
+
+                else -> {
+                    val currentDestinationRoute = navController.currentDestination?.route
+
+                    if (currentDestinationRoute != route) {
+                        navController.navigate(
+                            route = route,
+                            navOptions = navInfo.navOption
+                        )
+                    }
+                }
             }
-            val bundle = Bundle()
-            bundle.putString("link", it)
-            navController.navigate(it, navOptions = navInfo.navOption)
-            navManager.navigate(null)
         }
     }
 
     Scaffold(
+        containerColor = PlatinumSilver,
         bottomBar = {
-            if (shouldShowBottomBar(currentRoute)) {
+            if (showBottomBar) {
+                val mainViewModel: MainViewModel = hiltViewModel()
+                val allOrder by mainViewModel.allOrder.collectAsState()
+
                 BottomNavNoAnimation(
-                    currentRoute,
-                    onClick = { navigateToTab(navController, it) }
+                    currentRoute = currentRoute,
+                    basketCount = allOrder.size,
+                    onClick = { route ->
+                        navigateToTab(
+                            navController = navController,
+                            route = route
+                        )
+                    }
                 )
             }
         }
-    ) {
-        Box(modifier = Modifier.padding(bottom = it.calculateBottomPadding())) {
-            NavHost(
-                navController = navController,
-                startDestination = Route.SplashScreen.route,
-            ) {
-                // Splash
-                composable(
-                    route = Route.SplashScreen.route,
-                    exitTransition = {
-                        slideOutVertically(
-                            targetOffsetY = { -it },
-                            animationSpec = tween(durationMillis = 2000)
-                        )
-                    }
-                ) { SplashScreen() }
-
-                // Login
-                composable(
-                    route = Route.LoginScreen.route,
-                    enterTransition = {
-                        slideInVertically(
-                            initialOffsetY = { it },
-                            animationSpec = tween(durationMillis = 2000)
-                        )
-                    },
-                    exitTransition = {
-                        slideOutVertically(
-                            targetOffsetY = { -it },
-                            animationSpec = tween(durationMillis = 700)
-                        )
-                    }
-                ) { LoginScreen() }
-
-                // Home
-                composable(route = Route.HomeScreen.route) { HomeScreen() }
-
-                // Basket
-                composable(route = Route.BasketScreen.route) { BasketScreen() }
-
-                // Simulate
-                composable(route = Route.SimulateScreen.route) { SimulateScreen() }
-
-                // Order Address
-                composable(route = Route.OrderAddressScreen.route) { OrderAddressScreen() }
-
-                // Payment Method
-                composable(route = Route.PaymentMethodScreen.route) { PaymentMethodScreen() }
-
-                // Order Status Report
-                composable(route = Route.OrderStatusReportScreen.route) { OrderStatusReportScreen() }
-
-                // Order Details Report
-                composable(
-                    route = "${Route.OrderDetailsReportScreen.route}/{card}",
-                    arguments = listOf(navArgument("card") { type = NavType.IntType })
-                ) { backStackEntry ->
-                    val card = backStackEntry.arguments?.getInt("card", 0)
-                    OrderDetailsReportScreen(card = card)
-                }
-
-                // Profile
-                composable(route = Route.ProfileScreen.route) { ProfileScreen() }
-                composable(route = Route.AddressRegistrationScreen.route) { AddressRegistrationScreen() }
-                composable(route = Route.LocationRegistrationScreen.route) { LocationRegistrationScreen() }
-            }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.padding(
+                bottom = innerPadding.calculateBottomPadding()
+            )
+        ) {
+            AppNavHost(
+                navController = navController
+            )
         }
     }
 }
 
-// تابع برای تعیین اینکه آیا bottomBar باید نمایش داده شود یا خیر
-fun shouldShowBottomBar(currentRoute: String?): Boolean {
-    return currentRoute != Route.SplashScreen.route && currentRoute != Route.LoginScreen.route
+@Composable
+private fun AppNavHost(
+    navController: NavHostController
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Route.SplashScreen.route
+    ) {
+        composable(Route.SplashScreen.route) {
+            SplashScreen()
+        }
+
+        composable(Route.LoginScreen.route) {
+            LoginScreen()
+        }
+
+        composable(Route.HomeScreen.route) {
+            HomeScreen()
+        }
+
+        composable(Route.BasketScreen.route) {
+            BasketScreen()
+        }
+
+        composable(Route.SimulateScreen.route) {
+            SimulateScreen()
+        }
+
+        composable(Route.OrderAddressScreen.route) {
+            OrderAddressScreen()
+        }
+
+        composable(Route.PaymentMethodScreen.route) {
+            PaymentMethodScreen()
+        }
+
+        composable(Route.OrderStatusReportScreen.route) {
+            OrderStatusReportScreen()
+        }
+
+        composable(
+            route = Route.OrderDetailsReportScreen.routeWithArgs,
+            arguments = listOf(
+                navArgument(Route.OrderDetailsReportScreen.ARG_CARD) {
+                    type = NavType.IntType
+                    defaultValue = 0
+                }
+            )
+        ) { backStackEntry ->
+            val cartCode = backStackEntry.arguments
+                ?.getInt(Route.OrderDetailsReportScreen.ARG_CARD)
+                ?: 0
+
+            OrderDetailsReportScreen(
+                card = cartCode
+            )
+        }
+
+        composable(Route.ProfileScreen.route) {
+            ProfileScreen()
+        }
+
+        composable(Route.AddressRegistrationScreen.route) {
+            AddressRegistrationScreen()
+        }
+
+        composable(Route.LocationRegistrationScreen.route) {
+            LocationRegistrationScreen()
+        }
+    }
 }
 
-private fun navigateToTab(navController: NavController, route: String) {
+fun shouldShowBottomBar(currentRoute: String?): Boolean {
+    return currentRoute in bottomBarRoutes
+}
+
+private val bottomBarRoutes = setOf(
+    Route.HomeScreen.route,
+    Route.OrderStatusReportScreen.route,
+    Route.BasketScreen.route,
+    Route.ProfileScreen.route
+)
+
+private fun navigateToTab(
+    navController: NavController,
+    route: String
+) {
+    if (navController.currentDestination?.route == route) return
+
     navController.navigate(route) {
-        navController.graph.startDestinationRoute?.let { screenRoute ->
-            popUpTo(screenRoute) {
-                inclusive = true
-            }
+        popUpTo(Route.HomeScreen.route) {
+            saveState = true
+            inclusive = false
         }
+
         launchSingleTop = true
         restoreState = true
     }
 }
 
-
+fun orderDetailsRoute(card: Int): String {
+    return Route.OrderDetailsReportScreen.createRoute(card)
+}

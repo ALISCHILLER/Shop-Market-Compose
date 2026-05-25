@@ -32,10 +32,6 @@ class BasketViewModel @Inject constructor(
         observeOrders()
     }
 
-    fun getAllOrder() {
-        observeOrders()
-    }
-
     private fun observeOrders() {
         if (orderJob != null) return
 
@@ -69,30 +65,6 @@ class BasketViewModel @Inject constructor(
         )
     }
 
-    fun calculateTotalPriceAndHandleOrder(
-        value1: Int,
-        value2: Int,
-        orderEntity: OrderEntity
-    ): Float {
-        val totalValue = calculateTotalValue(
-            value1 = value1,
-            value2 = value2,
-            convertFactor2 = orderEntity.convertFactor2
-        )
-
-        updateOrderInDatabase(
-            orderEntity = orderEntity,
-            totalValue = totalValue,
-            value1 = value1,
-            value2 = value2
-        )
-
-        return calculateSalePrice(
-            totalValue = totalValue,
-            price = orderEntity.price
-        )
-    }
-
     fun updateOrderQuantity(
         orderEntity: OrderEntity,
         value1: Int,
@@ -104,29 +76,15 @@ class BasketViewModel @Inject constructor(
             convertFactor2 = orderEntity.convertFactor2
         )
 
-        updateOrderInDatabase(
-            orderEntity = orderEntity,
-            totalValue = totalValue,
-            value1 = value1,
-            value2 = value2
-        )
-    }
-
-    private fun updateOrderInDatabase(
-        orderEntity: OrderEntity,
-        totalValue: Int,
-        value1: Int,
-        value2: Int
-    ) {
         viewModelScope.launch {
             if (totalValue > 0) {
-                val updatedOrder = orderEntity.copy(
-                    numberOrder = totalValue,
-                    numberOrder1 = value1,
-                    numberOrder2 = value2
+                basketRepository.insertOrder(
+                    orderEntity.copy(
+                        numberOrder = totalValue,
+                        numberOrder1 = value1.coerceAtLeast(0),
+                        numberOrder2 = value2.coerceAtLeast(0)
+                    )
                 )
-
-                basketRepository.insertOrder(updatedOrder)
             } else {
                 basketRepository.deleteOrder(orderEntity.id)
             }
@@ -138,10 +96,7 @@ class BasketViewModel @Inject constructor(
             NavInfo(
                 id = Route.SimulateScreen.route,
                 navOption = NavOptions.Builder()
-                    .setPopUpTo(
-                        Route.BasketScreen.route,
-                        inclusive = false
-                    )
+                    .setPopUpTo(Route.BasketScreen.route, false)
                     .build()
             )
         )

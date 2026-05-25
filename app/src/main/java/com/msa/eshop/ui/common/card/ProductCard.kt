@@ -21,8 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,14 +36,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -49,10 +49,6 @@ import com.msa.eshop.data.Model.response.DiscountResultModel
 import com.msa.eshop.data.local.entity.OrderEntity
 import com.msa.eshop.data.local.entity.ProductModelEntity
 import com.msa.eshop.ui.component.bottomSheetC.BottomSheetExample
-import com.msa.eshop.ui.theme.DIMENS_2dp
-import com.msa.eshop.ui.theme.PlatinumSilver
-import com.msa.eshop.ui.theme.RedMain
-import com.msa.eshop.ui.theme.Typography
 import com.msa.eshop.utils.Currency
 
 @Composable
@@ -66,19 +62,18 @@ fun ProductCard(
     onDiscountClick: (ProductModelEntity) -> Unit,
     onClick: (ProductModelEntity) -> Unit
 ) {
-    var showBottomSheet by remember {
+    var showAddSheet by remember(product.id) {
         mutableStateOf(false)
     }
 
-    var showBottomSheetDiscounts by remember {
+    var showDiscountSheet by remember(product.id) {
         mutableStateOf(false)
     }
 
-    if (showBottomSheet) {
+    if (showAddSheet) {
         BottomSheetExample(
-            modifier = Modifier.fillMaxWidth(),
             onDismissRequest = {
-                showBottomSheet = false
+                showAddSheet = false
             }
         ) {
             AddProduct(
@@ -86,16 +81,16 @@ fun ProductCard(
                 order = order,
                 onSaveOrder = onSaveOrder,
                 onDismissRequest = {
-                    showBottomSheet = false
+                    showAddSheet = false
                 }
             )
         }
     }
 
-    if (showBottomSheetDiscounts) {
+    if (showDiscountSheet) {
         BottomSheetExample(
             onDismissRequest = {
-                showBottomSheetDiscounts = false
+                showDiscountSheet = false
             }
         ) {
             DiscountsProductCard(
@@ -103,164 +98,139 @@ fun ProductCard(
                 discounts = discounts,
                 isLoading = isDiscountLoading,
                 onDismissRequest = {
-                    showBottomSheetDiscounts = false
+                    showDiscountSheet = false
                 }
             )
         }
     }
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        Column(
+        Card(
             modifier = modifier
-                .padding(4.dp)
-                .shadow(
-                    elevation = 5.dp,
-                    shape = RoundedCornerShape(18.dp)
-                )
-                .clickable {
-                    onClick(product)
-                }
+                .clickable { onClick(product) },
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
         ) {
-            Surface(
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(1.dp),
-                color = Color.White
+            Column(
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = PlatinumSilver,
-                                shape = RoundedCornerShape(18.dp)
-                            )
-                            .aspectRatio(1f)
-                            .fillMaxWidth()
-                    ) {
-                        AsyncImage(
-                            model = product.productImage,
-                            contentDescription = product.productName,
-                            modifier = Modifier.fillMaxSize(),
-                            error = painterResource(id = R.drawable.not_load_image),
-                            placeholder = painterResource(id = R.drawable.not_load_image)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(18.dp)
                         )
-
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(4.dp)
-                                .alpha(if (product.isDiscounts) 1f else 0f)
-                                .clickable(enabled = product.isDiscounts) {
-                                    onDiscountClick(product)
-                                    showBottomSheetDiscounts = true
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                modifier = Modifier.size(40.dp),
-                                painter = painterResource(id = R.drawable.ic_discount),
-                                contentDescription = "discount"
-                            )
-                        }
-                    }
-
-                    Text(
-                        text = product.productName.orEmpty(),
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = Typography.labelSmall
+                ) {
+                    AsyncImage(
+                        model = product.productImage,
+                        contentDescription = product.productName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                        error = painterResource(id = R.drawable.not_load_image),
+                        placeholder = painterResource(id = R.drawable.not_load_image)
                     )
 
-                    Column(
-                        modifier = Modifier.padding(5.dp)
-                    ) {
-                        Row(
+                    if (product.isDiscounts) {
+                        Surface(
                             modifier = Modifier
-                                .padding(vertical = 3.dp)
-                                .fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .clickable {
+                                    onDiscountClick(product)
+                                    showDiscountSheet = true
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = Currency(product.price).toFormattedString(),
-                                    style = Typography.labelSmall
+                                Image(
+                                    modifier = Modifier.size(20.dp),
+                                    painter = painterResource(id = R.drawable.ic_discount),
+                                    contentDescription = "تخفیف"
                                 )
 
-                                Spacer(modifier = Modifier.padding(2.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
 
                                 Text(
-                                    text = "ریال",
-                                    style = Typography.labelSmall
+                                    text = "تخفیف",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
-
-                        Button(
-                            onClick = {
-                                showBottomSheet = true
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = RedMain
-                            ),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AddShoppingCart,
-                                contentDescription = "add to cart"
-                            )
-
-                            Spacer(modifier = Modifier.width(DIMENS_2dp))
-
-                            Text(
-                                text = stringResource(id = R.string.add_to_cart),
-                                style = Typography.labelSmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
                     }
+                }
+
+                Text(
+                    text = product.productName.orEmpty(),
+                    maxLines = 2,
+                    minLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = Currency(product.price).toFormattedString(),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Text(
+                        text = "ریال",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (order != null) {
+                    Text(
+                        text = "در سبد: ${order.numberOrder} ${order.unitOrder.orEmpty()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        showAddSheet = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddShoppingCart,
+                        contentDescription = null
+                    )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    Text(
+                        text = stringResource(id = R.string.add_to_cart),
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ProductCardPreview() {
-    ProductCard(
-        product = ProductModelEntity(
-            id = "11",
-            productName = "روغن ذرت ۸۱۰ گرم زر",
-            productCode = 659985,
-            fullNameKala1 = "عدد",
-            unit1 = "EA",
-            unitid1 = "1",
-            convertFactor1 = 1,
-            fullNameKala2 = "کارتن",
-            unit2 = "KAR",
-            convertFactor2 = 12,
-            unitid2 = "2",
-            productGroupCode = 5,
-            price = 98563,
-            isDiscounts = true,
-            productImage = ""
-        ),
-        order = null,
-        discounts = emptyList(),
-        isDiscountLoading = false,
-        onSaveOrder = { _, _, _ -> },
-        onDiscountClick = {},
-        onClick = {}
-    )
 }

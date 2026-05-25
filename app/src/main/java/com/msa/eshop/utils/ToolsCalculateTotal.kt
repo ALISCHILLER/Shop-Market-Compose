@@ -8,15 +8,18 @@ fun calculateTotalValue(
     value2: Int,
     convertFactor2: Int
 ): Int {
-    val valueNumber = (value2 * (convertFactor2 ?: 0)) + value1
-    return valueNumber.coerceAtLeast(0)
+    val safeValue1 = value1.coerceAtLeast(0)
+    val safeValue2 = value2.coerceAtLeast(0)
+    val safeConvertFactor2 = convertFactor2.coerceAtLeast(0)
+
+    return (safeValue2 * safeConvertFactor2 + safeValue1).coerceAtLeast(0)
 }
 
 fun calculateSalePrice(
     totalValue: Int,
     price: Int
 ): Float {
-    return totalValue * price.toFloat()
+    return totalValue.coerceAtLeast(0) * price.coerceAtLeast(0).toFloat()
 }
 
 fun createOrderEntity(
@@ -25,8 +28,8 @@ fun createOrderEntity(
     value1: Int,
     value2: Int
 ): OrderEntity {
-    with(productModelEntity) {
-        return OrderEntity(
+    return with(productModelEntity) {
+        OrderEntity(
             id = id,
             convertFactor1 = convertFactor1,
             convertFactor2 = convertFactor2,
@@ -41,10 +44,17 @@ fun createOrderEntity(
             unitid2 = unitid2,
             price = price,
             productImage = productImage,
-            numberOrder = totalValue,
-            numberOrder1 = value1,
-            numberOrder2 = value2,
+            numberOrder = totalValue.coerceAtLeast(0),
+            numberOrder1 = value1.coerceAtLeast(0),
+            numberOrder2 = value2.coerceAtLeast(0),
             unitOrder = unit1
         )
     }
+}
+
+fun OrderEntity.totalPrice(): Float {
+    return calculateSalePrice(
+        totalValue = numberOrder,
+        price = price
+    )
 }

@@ -9,45 +9,67 @@ import com.msa.eshop.ui.navigation.NavManager
 import com.msa.eshop.ui.navigation.Route
 import com.msa.eshop.utils.CompanionValues
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val navManager: NavManager,
-): ViewModel(){
-    @Inject
-    lateinit var sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences
+) : ViewModel() {
 
-    fun splashCheck(){
+    private var hasStarted = false
+
+    fun startSplashFlow() {
+        if (hasStarted) return
+        hasStarted = true
+
         viewModelScope.launch {
-            delay(2000)
-            val token = sharedPreferences.getString(CompanionValues.TOKEN, "")
-            if (token?.isNotEmpty() == true)
+            delay(SPLASH_DELAY_MS)
+
+            val token = sharedPreferences
+                .getString(CompanionValues.TOKEN, null)
+                .orEmpty()
+                .trim()
+
+            if (token.isNotEmpty()) {
                 navigateToHome()
-            else
+            } else {
                 navigateToLogin()
+            }
         }
     }
 
-
-    fun navigateToHome() {
+    private fun navigateToHome() {
         navManager.navigate(
-            NavInfo(id = Route.HomeScreen.route,
-                navOption = NavOptions.Builder().setPopUpTo(
-                    Route.SplashScreen.route,
-                    inclusive = true).build())
+            NavInfo(
+                id = Route.HomeScreen.route,
+                navOption = splashPopUpOptions()
+            )
         )
     }
 
-    fun navigateToLogin() {
+    private fun navigateToLogin() {
         navManager.navigate(
-            NavInfo(id = Route.LoginScreen.route,
-                navOption = NavOptions.Builder().setPopUpTo(
-                    Route.SplashScreen.route,
-                    inclusive = true).build())
+            NavInfo(
+                id = Route.LoginScreen.route,
+                navOption = splashPopUpOptions()
+            )
         )
     }
 
+    private fun splashPopUpOptions(): NavOptions {
+        return NavOptions.Builder()
+            .setPopUpTo(
+                Route.SplashScreen.route,
+                true
+            )
+            .setLaunchSingleTop(true)
+            .build()
+    }
+
+    companion object {
+        private const val SPLASH_DELAY_MS = 1500L
+    }
 }

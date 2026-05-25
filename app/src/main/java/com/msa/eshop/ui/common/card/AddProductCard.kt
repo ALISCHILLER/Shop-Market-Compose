@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -25,12 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -38,9 +37,6 @@ import com.msa.eshop.R
 import com.msa.eshop.data.local.entity.OrderEntity
 import com.msa.eshop.data.local.entity.ProductModelEntity
 import com.msa.eshop.ui.component.weightC.CounterButtonNew
-import com.msa.eshop.ui.theme.PlatinumSilver
-import com.msa.eshop.ui.theme.Typography
-import com.msa.eshop.ui.theme.barcolorlight2
 import com.msa.eshop.utils.Currency
 import com.msa.eshop.utils.calculateSalePrice
 import com.msa.eshop.utils.calculateTotalValue
@@ -72,25 +68,27 @@ fun AddProduct(
         price = product.price
     )
 
+    val canSubmit = totalValue > 0 || order != null
+
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         Column(
             modifier = modifier
-                .background(Color.White)
-                .padding(17.dp)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .padding(top = 10.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .padding(5.dp)
-                        .size(width = 100.dp, height = 75.dp)
+                        .size(96.dp)
                         .background(
-                            color = PlatinumSilver,
-                            shape = RoundedCornerShape(18.dp)
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(20.dp)
                         )
                         .aspectRatio(1f)
                 ) {
@@ -104,140 +102,86 @@ fun AddProduct(
                 }
 
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(Color.White)
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth(),
                         text = product.productName.orEmpty(),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        style = Typography.titleSmall
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Row(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = "فی:",
-                            style = Typography.titleSmall
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Spacer(modifier = Modifier.padding(5.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
 
                         Text(
                             text = Currency(product.price).toFormattedString(),
-                            style = Typography.titleSmall,
-                            color = barcolorlight2
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
 
-                        Spacer(modifier = Modifier.padding(5.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
 
                         Text(
                             text = "ریال",
-                            style = Typography.titleSmall,
-                            color = barcolorlight2
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .padding(7.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "${product.fullNameKala1 ?: "عدد"} :",
-                    style = Typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    CounterButtonNew(
-                        value = value1.toString(),
-                        onValueIncreaseClick = {},
-                        onValueDecreaseClick = {},
-                        onValueClearClick = {
-                            value1 = 0
-                        },
-                        onValue = {
-                            value1 = it.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                        }
-                    )
-                }
-            }
-
-            if (!product.fullNameKala2.isNullOrBlank() && product.convertFactor2 > 0) {
-                Row(
-                    modifier = Modifier
-                        .padding(7.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "${product.fullNameKala2} :",
-                        style = Typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                        CounterButtonNew(
-                            value = value2.toString(),
-                            onValueIncreaseClick = {},
-                            onValueDecreaseClick = {},
-                            onValueClearClick = {
-                                value2 = 0
-                            },
-                            onValue = {
-                                value2 = it.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                            }
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider(
-                color = Color.Gray,
-                thickness = 1.dp,
-                modifier = Modifier.padding(vertical = 8.dp)
+            QuantityRow(
+                title = product.fullNameKala1 ?: "عدد",
+                value = value1,
+                onValueChange = { value1 = it }
             )
 
+            if (!product.fullNameKala2.isNullOrBlank() && product.convertFactor2 > 0) {
+                QuantityRow(
+                    title = product.fullNameKala2,
+                    value = value2,
+                    onValueChange = { value2 = it }
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+
             Row(
-                modifier = Modifier
-                    .padding(7.dp)
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "مبلغ ناخالص:",
-                    style = Typography.titleSmall
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
                     text = Currency(totalPrice).toFormattedString(),
-                    style = Typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary
                 )
 
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 Text(
                     text = "ریال",
-                    style = Typography.titleSmall
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -246,42 +190,56 @@ fun AddProduct(
                     onSaveOrder(product, value1, value2)
                     onDismissRequest()
                 },
+                enabled = canSubmit,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                shape = RoundedCornerShape(6.dp)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 Text(
-                    text = stringResource(id = R.string.save_Order),
-                    style = Typography.titleSmall
+                    text = if (totalValue == 0 && order != null) {
+                        "حذف از سبد خرید"
+                    } else {
+                        stringResource(id = R.string.save_Order)
+                    },
+                    style = MaterialTheme.typography.titleSmall
                 )
             }
         }
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-private fun AddProductPreview() {
-    AddProduct(
-        product = ProductModelEntity(
-            id = "11",
-            convertFactor1 = 1,
-            convertFactor2 = 12,
-            fullNameKala1 = "عدد (1)",
-            fullNameKala2 = "کارتن (12)",
-            productCode = 659985,
-            productGroupCode = 5,
-            productName = "روغن ذرت زر",
-            unit1 = "EA",
-            unit2 = "KAR",
-            unitid1 = "54654",
-            unitid2 = "4565",
-            price = 98563,
-            isDiscounts = true,
-            productImage = ""
-        ),
-        order = null,
-        onSaveOrder = { _, _, _ -> },
-        onDismissRequest = {}
-    )
+private fun QuantityRow(
+    title: String,
+    value: Int,
+    onValueChange: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = "$title:",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            CounterButtonNew(
+                value = value.toString(),
+                onValueClearClick = {
+                    onValueChange(0)
+                },
+                onValue = {
+                    onValueChange(it.toIntOrNull()?.coerceAtLeast(0) ?: 0)
+                }
+            )
+        }
+    }
 }

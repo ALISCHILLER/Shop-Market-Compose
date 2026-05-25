@@ -1,16 +1,12 @@
 package com.msa.eshop.ui.screen.home
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.msa.eshop.data.Model.response.BannerModel
 import com.msa.eshop.data.Model.response.DiscountResultModel
 import com.msa.eshop.data.local.entity.OrderEntity
 import com.msa.eshop.data.local.entity.ProductGroupEntity
 import com.msa.eshop.data.local.entity.ProductModelEntity
-import com.msa.eshop.data.local.entity.UserModelEntity
 import com.msa.eshop.data.repository.HomeRepository
-import com.msa.eshop.ui.navigation.NavManager
 import com.msa.eshop.utils.Convert_Number
 import com.msa.eshop.utils.calculateSalePrice
 import com.msa.eshop.utils.calculateTotalValue
@@ -22,46 +18,29 @@ import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val navManager: NavManager,
     private val homeRepository: HomeRepository
 ) : ViewModel() {
 
     private val converter = Convert_Number()
 
-    private val _state = MutableStateFlow(GeneralStateModel())
+    private val _state = MutableStateFlow(GeneralStateModel(isLoading = true))
     val state: StateFlow<GeneralStateModel> = _state
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
 
-    private val _allProduct = MutableStateFlow<List<ProductModelEntity>>(emptyList())
-    val allProduct: StateFlow<List<ProductModelEntity>> = _allProduct
-
-    private val _allProductGroup = MutableStateFlow<List<ProductGroupEntity>>(emptyList())
-    val allProductGroup: StateFlow<List<ProductGroupEntity>> = _allProductGroup
-
-    private val _allOrder = MutableStateFlow<List<OrderEntity>>(emptyList())
-    val allOrder: StateFlow<List<OrderEntity>> = _allOrder
-
-    private val _user = MutableStateFlow<UserModelEntity?>(null)
-    val user: StateFlow<UserModelEntity?> = _user
-
-    private val _banner = MutableStateFlow<List<BannerModel>>(emptyList())
-    val banner: StateFlow<List<BannerModel>> = _banner
-
-    private val _discount = MutableStateFlow<List<DiscountResultModel>>(emptyList())
-    val discount: StateFlow<List<DiscountResultModel>> = _discount
-
     private var productJob: Job? = null
     private var productGroupJob: Job? = null
     private var orderJob: Job? = null
 
-    private var hasStartedObservers = false
+    private var observersStarted = false
+    private var firstLoadRequested = false
 
     private var currentGroupCode: Int = ALL_PRODUCTS_GROUP_CODE
     private var currentSearchQuery: String = ""
@@ -73,57 +52,51 @@ class HomeViewModel @Inject constructor(
         productCategoryImageUnselect = null
     )
 
-    fun productCheck() {
+    init {
         startObserversIfNeeded()
+        productCheck()
+    }
 
-        val productCount = homeRepository.getProductCount()
-
-        if (productCount == 0) {
-            productRequest()
-        }
-
-        productGroupRequest()
-        Bannerrequest()
+    fun productCheck() {
+        if (firstLoadRequested) return
+        firstLoadRequested = true
+        syncCatalog(force = false)
     }
 
     fun refresh() {
-        startObserversIfNeeded()
-
-        productRequest()
-        productGroupRequest()
-        Bannerrequest()
+        syncCatalog(force = true)
     }
 
     fun onGroupSelected(productCategoryCode: Int) {
+        if (currentGroupCode == productCategoryCode) return
+
         currentGroupCode = productCategoryCode
 
-        _uiState.value = _uiState.value.copy(
-            selectedGroupCode = productCategoryCode
-        )
+        _uiState.update {
+            it.copy(
+                selectedGroupCode = productCategoryCode,
+                isLoading = true,
+                errorMessage = null
+            )
+        }
 
         observeProducts()
     }
 
     fun onSearchChanged(search: String) {
-        currentSearchQuery = converter.PersianToEnglish(search.trim())
+        val normalizedSearch = converter.PersianToEnglish(search.trim())
 
-        _uiState.value = _uiState.value.copy(
-            searchQuery = search
-        )
+        currentSearchQuery = normalizedSearch
+
+        _uiState.update {
+            it.copy(
+                searchQuery = search,
+                isLoading = true,
+                errorMessage = null
+            )
+        }
 
         observeProducts()
-    }
-
-    fun getProduct(productCategoryCode: Int) {
-        onGroupSelected(productCategoryCode)
-    }
-
-    fun searchProduct(search: String) {
-        onSearchChanged(search)
-    }
-
-    fun getAllOrder() {
-        observeAllOrders()
     }
 
     fun saveProductOrder(
@@ -137,12 +110,20 @@ class HomeViewModel @Inject constructor(
             convertFactor2 = productModelEntity.convertFactor2
         )
 
-        updateOrderInDatabase(
-            productModelEntity = productModelEntity,
-            totalValue = totalValue,
-            value1 = value1,
-            value2 = value2
-        )
+        viewModelScope.launch {
+            if (totalValue > 0) {
+                homeRepository.insertOrder(
+                    createOrderEntity(
+                        productModelEntity = productModelEntity,
+                        totalValue = totalValue,
+                        value1 = value1,
+                        value2 = value2
+                    )
+                )
+            } else {
+                homeRepository.deleteOrder(productModelEntity.id)
+            }
+        }
     }
 
     fun calculateTotalPriceAndHandleOrder(
@@ -156,9 +137,8 @@ class HomeViewModel @Inject constructor(
             convertFactor2 = productModelEntity.convertFactor2
         )
 
-        updateOrderInDatabase(
+        saveProductOrder(
             productModelEntity = productModelEntity,
-            totalValue = totalValue,
             value1 = value1,
             value2 = value2
         )
@@ -169,80 +149,6 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    fun productRequest() {
-        makeRequest(
-            scope = viewModelScope,
-            request = {
-                homeRepository.productRequest()
-            },
-            onSuccess = { response ->
-                viewModelScope.launch {
-                    response?.data?.let { products ->
-                        homeRepository.insertProduct(products)
-                    }
-                    updateStateLoading(false)
-                }
-            },
-            updateStateLoading = { isLoading ->
-                updateStateLoading(isLoading)
-            },
-            updateStateError = { errorMessage ->
-                updateStateError(errorMessage)
-            }
-        )
-    }
-
-    fun productGroupRequest() {
-        makeRequest(
-            scope = viewModelScope,
-            request = {
-                homeRepository.productGroupRequest()
-            },
-            onSuccess = { response ->
-                viewModelScope.launch {
-                    response?.data?.let { productGroups ->
-                        homeRepository.insertProductGroup(productGroups)
-                    }
-                    updateStateLoading(false)
-                }
-            },
-            updateStateLoading = { isLoading ->
-                updateStateLoading(isLoading)
-            },
-            updateStateError = { errorMessage ->
-                updateStateError(errorMessage)
-            }
-        )
-    }
-
-    fun Bannerrequest() {
-        makeRequest(
-            scope = viewModelScope,
-            request = {
-                homeRepository.requestBanner()
-            },
-            onSuccess = { response ->
-                response?.data?.let { banners ->
-                    Timber.tag("HomeViewModel").d("Bannerrequest SUCCESS: $banners")
-
-                    _banner.value = banners
-
-                    _uiState.value = _uiState.value.copy(
-                        banners = banners
-                    )
-                }
-
-                updateStateLoading(false)
-            },
-            updateStateLoading = { isLoading ->
-                updateStateLoading(isLoading)
-            },
-            updateStateError = { errorMessage ->
-                updateStateError(errorMessage)
-            }
-        )
-    }
-
     fun discountRequest(productCode: String) {
         makeRequest(
             scope = viewModelScope,
@@ -250,39 +156,139 @@ class HomeViewModel @Inject constructor(
                 homeRepository.requestDiscount(productCode)
             },
             onSuccess = { response ->
-                response?.data?.let { discounts ->
-                    Timber.tag("HomeViewModel").d("discountRequest SUCCESS: $discounts")
+                val discounts: List<DiscountResultModel> = response?.data.orEmpty()
 
-                    _discount.value = discounts
-
-                    _uiState.value = _uiState.value.copy(
+                _uiState.update {
+                    it.copy(
                         discounts = discounts,
-                        isDiscountLoading = false
+                        isDiscountLoading = false,
+                        errorMessage = null
                     )
                 }
             },
             updateStateLoading = { isLoading ->
-                _uiState.value = _uiState.value.copy(
-                    isDiscountLoading = isLoading
-                )
+                _uiState.update {
+                    it.copy(isDiscountLoading = isLoading)
+                }
             },
             updateStateError = { errorMessage ->
-                _uiState.value = _uiState.value.copy(
-                    isDiscountLoading = false,
-                    errorMessage = errorMessage
-                )
+                _uiState.update {
+                    it.copy(
+                        isDiscountLoading = false,
+                        errorMessage = errorMessage
+                    )
+                }
             }
         )
     }
 
-    private fun startObserversIfNeeded() {
-        if (hasStartedObservers) return
+    private fun syncCatalog(force: Boolean) {
+        viewModelScope.launch {
+            startObserversIfNeeded()
 
-        hasStartedObservers = true
+            _uiState.update {
+                it.copy(
+                    isLoading = it.products.isEmpty(),
+                    isRefreshing = it.products.isNotEmpty(),
+                    errorMessage = null
+                )
+            }
+
+            val productCount = homeRepository.getProductCount()
+            val productGroupCount = homeRepository.getProductGroupCount()
+
+            if (force || productCount == 0) {
+                requestProducts()
+            }
+
+            if (force || productGroupCount == 0) {
+                requestProductGroups()
+            }
+
+            requestBanners()
+        }
+    }
+
+    private fun requestProducts() {
+        makeRequest(
+            scope = viewModelScope,
+            request = {
+                homeRepository.productRequest()
+            },
+            onSuccess = { response ->
+                viewModelScope.launch {
+                    val products: List<ProductModelEntity> = response?.data.orEmpty()
+                    if (products.isNotEmpty()) {
+                        homeRepository.insertProduct(products)
+                    }
+
+                    updateStateLoading(false)
+                }
+            },
+            updateStateLoading = ::updateStateLoading,
+            updateStateError = ::updateStateError
+        )
+    }
+
+    private fun requestProductGroups() {
+        makeRequest(
+            scope = viewModelScope,
+            request = {
+                homeRepository.productGroupRequest()
+            },
+            onSuccess = { response ->
+                viewModelScope.launch {
+                    val groups: List<ProductGroupEntity> = response?.data.orEmpty()
+                    if (groups.isNotEmpty()) {
+                        homeRepository.insertProductGroup(groups)
+                    }
+
+                    updateStateLoading(false)
+                }
+            },
+            updateStateLoading = ::updateStateLoading,
+            updateStateError = ::updateStateError
+        )
+    }
+
+    private fun requestBanners() {
+        makeRequest(
+            scope = viewModelScope,
+            request = {
+                homeRepository.requestBanner()
+            },
+            onSuccess = { response ->
+                val banners = response?.data.orEmpty()
+
+                _uiState.update {
+                    it.copy(
+                        banners = banners,
+                        isRefreshing = false,
+                        errorMessage = null
+                    )
+                }
+
+                updateStateLoading(false)
+            },
+            updateStateLoading = { isLoading ->
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = isLoading && it.products.isNotEmpty(),
+                        isLoading = isLoading && it.products.isEmpty()
+                    )
+                }
+            },
+            updateStateError = ::updateStateError
+        )
+    }
+
+    private fun startObserversIfNeeded() {
+        if (observersStarted) return
+        observersStarted = true
 
         observeProducts()
-        observeAllProductGroups()
-        observeAllOrders()
+        observeProductGroups()
+        observeOrders()
     }
 
     private fun observeProducts() {
@@ -293,112 +299,80 @@ class HomeViewModel @Inject constructor(
                 groupCode = currentGroupCode,
                 searchQuery = currentSearchQuery
             ).collect { products ->
-                _allProduct.value = products
-
-                _uiState.value = _uiState.value.copy(
-                    products = products,
-                    selectedGroupCode = currentGroupCode
-                )
-
-                updateStateLoading(false)
+                _uiState.update {
+                    it.copy(
+                        products = products,
+                        selectedGroupCode = currentGroupCode,
+                        isLoading = false,
+                        isRefreshing = false
+                    )
+                }
             }
         }
     }
 
-    private fun observeAllProductGroups() {
+    private fun observeProductGroups() {
         productGroupJob?.cancel()
 
         productGroupJob = viewModelScope.launch {
             homeRepository.getAllProductGroup.collect { productGroups ->
-                Log.e("HomeViewModel", "getAllProductGroup: $productGroups")
-
                 val uiGroups = listOf(allProductsGroup) + productGroups
                     .filter { it.productCategoryCode != ALL_PRODUCTS_GROUP_CODE }
                     .filter { it.productCategoryCode != 0 }
                     .distinctBy { it.productCategoryCode }
 
-                _allProductGroup.value = productGroups
-
-                _uiState.value = _uiState.value.copy(
-                    productGroups = uiGroups
-                )
-
-                updateStateLoading(false)
+                _uiState.update {
+                    it.copy(productGroups = uiGroups)
+                }
             }
         }
     }
 
-    private fun observeAllOrders() {
+    private fun observeOrders() {
         orderJob?.cancel()
 
         orderJob = viewModelScope.launch {
             homeRepository.getAllOrder.collect { orders ->
-                _allOrder.value = orders
-
-                _uiState.value = _uiState.value.copy(
-                    orders = orders
-                )
+                _uiState.update {
+                    it.copy(orders = orders)
+                }
             }
         }
-    }
-
-    private fun updateOrderInDatabase(
-        productModelEntity: ProductModelEntity,
-        totalValue: Int,
-        value1: Int,
-        value2: Int
-    ) {
-        viewModelScope.launch {
-            if (totalValue > 0) {
-                insertOrder(
-                    productModelEntity = productModelEntity,
-                    totalValue = totalValue,
-                    value1 = value1,
-                    value2 = value2
-                )
-            } else {
-                homeRepository.deleteOrder(productModelEntity.id)
-            }
-        }
-    }
-
-    private suspend fun insertOrder(
-        productModelEntity: ProductModelEntity,
-        totalValue: Int,
-        value1: Int,
-        value2: Int
-    ) {
-        homeRepository.insertOrder(
-            createOrderEntity(
-                productModelEntity = productModelEntity,
-                totalValue = totalValue,
-                value1 = value1,
-                value2 = value2
-            )
-        )
     }
 
     private fun updateStateLoading(isLoading: Boolean) {
-        _state.value = _state.value.copy(
-            isLoading = isLoading,
-            error = null
-        )
+        _state.update {
+            it.copy(
+                isLoading = isLoading,
+                error = null
+            )
+        }
 
-        _uiState.value = _uiState.value.copy(
-            isLoading = isLoading,
-            errorMessage = null
-        )
+        _uiState.update {
+            it.copy(
+                isLoading = isLoading && it.products.isEmpty(),
+                isRefreshing = isLoading && it.products.isNotEmpty(),
+                errorMessage = null
+            )
+        }
     }
 
     private fun updateStateError(errorMessage: String?) {
-        _state.value = _state.value.copy(
-            isLoading = false,
-            error = errorMessage
-        )
+        Timber.tag("HomeViewModel").e(errorMessage.orEmpty())
 
-        _uiState.value = _uiState.value.copy(
-            isLoading = false,
-            errorMessage = errorMessage
-        )
+        _state.update {
+            it.copy(
+                isLoading = false,
+                error = errorMessage
+            )
+        }
+
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                isRefreshing = false,
+                errorMessage = errorMessage
+            )
+        }
     }
 }

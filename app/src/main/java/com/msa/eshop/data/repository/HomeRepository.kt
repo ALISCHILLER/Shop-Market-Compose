@@ -27,53 +27,43 @@ class HomeRepository @Inject constructor(
 ) {
 
     val getAllProduct: Flow<List<ProductModelEntity>> = productDao.getAll()
-
     val getAllProductGroup: Flow<List<ProductGroupEntity>> = productGroupDao.getAll()
-
     val getAllOrder: Flow<List<OrderEntity>> = orderDao.getAll()
 
     suspend fun productRequest(): Flow<Resource<ProductResponse?>> {
         return apiManager.makeSafeApiCall {
-            withContext(Dispatchers.IO) {
-                apiService.getProductData()
-            }
-        } as Flow<Resource<ProductResponse?>>
+            apiService.getProductData()
+        }
     }
 
     suspend fun productGroupRequest(): Flow<Resource<ProductGroupResponse?>> {
         return apiManager.makeSafeApiCall {
-            withContext(Dispatchers.IO) {
-                apiService.getProductGroupData()
-            }
-        } as Flow<Resource<ProductGroupResponse?>>
+            apiService.getProductGroupData()
+        }
     }
 
     suspend fun requestBanner(): Flow<Resource<BannerResponse?>> {
         return apiManager.makeSafeApiCall {
-            withContext(Dispatchers.IO) {
-                apiService.getBanner()
-            }
-        } as Flow<Resource<BannerResponse?>>
+            apiService.getBanner()
+        }
     }
 
     suspend fun requestDiscount(productCode: String): Flow<Resource<DiscountResponse?>> {
         return apiManager.makeSafeApiCall {
-            withContext(Dispatchers.IO) {
-                apiService.getListDiscounts(productCode)
-            }
-        } as Flow<Resource<DiscountResponse?>>
+            apiService.getListDiscounts(productCode)
+        }
     }
 
-    fun getProductCount(): Int {
-        return productDao.getProductCount()
+    suspend fun getProductCount(): Int {
+        return withContext(Dispatchers.IO) {
+            productDao.getProductCount()
+        }
     }
 
-    fun getProductGroupCount(): Int {
-        return productGroupDao.getProductGroupCount()
-    }
-
-    fun getProduct(code: Int): Flow<List<ProductModelEntity>> {
-        return productDao.getProduct(code)
+    suspend fun getProductGroupCount(): Int {
+        return withContext(Dispatchers.IO) {
+            productGroupDao.getProductGroupCount()
+        }
     }
 
     fun observeProducts(
@@ -86,24 +76,16 @@ class HomeRepository @Inject constructor(
         )
     }
 
-    suspend fun insertProductGroup(productGroupEntity: List<ProductGroupEntity>) {
+    suspend fun insertProductGroup(productGroups: List<ProductGroupEntity>) {
         withContext(Dispatchers.IO) {
-            productGroupDao.insert(productGroupEntity)
+            productGroupDao.insert(productGroups)
         }
     }
 
-    suspend fun insertProduct(productModelEntity: List<ProductModelEntity>) {
+    suspend fun insertProduct(products: List<ProductModelEntity>) {
         withContext(Dispatchers.IO) {
-            productDao.insert(productModelEntity)
+            productDao.insert(products)
         }
-    }
-
-    fun searchProduct(search: String): Flow<List<ProductModelEntity>> {
-        return productDao.searchProducts(search)
-    }
-
-    fun getOrder(code: Int): Flow<OrderEntity> {
-        return orderDao.getOrder(code.toString())
     }
 
     suspend fun insertOrder(orderEntity: OrderEntity) {
